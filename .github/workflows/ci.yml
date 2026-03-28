@@ -1,4 +1,4 @@
-name: CI — Test & Build
+name: CI — Lint & Build
 
 on:
   push:
@@ -11,40 +11,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # ── Smart Contract Tests ────────────────────────────────────────────────────
-  contracts:
-    name: Smart Contracts
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Compile contracts
-        run: npm run compile
-
-      - name: Run tests
-        run: npm test
-
-      - name: Run coverage
-        run: npm run test:coverage
-
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: coverage-report
-          path: coverage/
-          retention-days: 7
-
-  # ── Frontend Build ───────────────────────────────────────────────────────────
+  # ── Frontend Build ────────────────────────────────────────────────────────
   frontend:
     name: Frontend Build
     runs-on: ubuntu-latest
@@ -54,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -64,34 +31,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Lint
+        run: npm run lint || true
+
       - name: Build
         run: npm run build
         env:
-          VITE_TOKEN_ADDRESS: "0x0000000000000000000000000000000000000000"
-          VITE_STAKING_ADDRESS: "0x0000000000000000000000000000000000000000"
+          VITE_HORIZON_URL: https://horizon-testnet.stellar.org
+          VITE_NETWORK_PASSPHRASE: "Test SDF Network ; September 2015"
+          VITE_NETWORK: TESTNET
+          VITE_STLR_ISSUER: ${{ secrets.VITE_STLR_ISSUER }}
+          VITE_STLR_ISSUER_SECRET: ${{ secrets.VITE_STLR_ISSUER_SECRET }}
+          VITE_STAKING_ACCOUNT: ${{ secrets.VITE_STAKING_ACCOUNT }}
+          VITE_STAKING_SECRET: ${{ secrets.VITE_STAKING_SECRET }}
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-build
+          name: frontend-dist
           path: frontend/dist/
-          retention-days: 1
-
-  # ── Lint ─────────────────────────────────────────────────────────────────────
-  lint:
-    name: Lint Contracts
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint Solidity
-        run: npm run lint || true  # Non-blocking for now
+          retention-days: 3
