@@ -93,35 +93,30 @@ export function useFreighter() {
       if (freighterFound) {
         try {
           const allowedRes     = await isAllowed();
-          const alreadyAllowed = unwrap(allowedRes, "isAllowed") ?? allowedRes ?? false;
+          const alreadyAllowed = allowedRes?.isAllowed ?? false;
+
+          let addr = "";
+          let net  = "TESTNET";
 
           if (alreadyAllowed) {
             const addrRes = await getAddress();
-            const addr    = unwrap(addrRes, "address") ?? addrRes;
-            const netRes  = await getNetwork();
-            const net     = unwrap(netRes, "network") ?? netRes ?? "TESTNET";
-            if (!cancelled && addr && isValidStellarAddress(addr)) {
-              localStorage.setItem(WALLET_TYPE, "freighter");
-              localStorage.removeItem(MANUAL_KEY);
-              setAccount(addr); setNetwork(net);
-              setWalletType("freighter"); setIsViewOnly(false);
-              return;
-            }
+            addr = addrRes?.address || "";
+            const netRes = await getNetwork();
+            net = netRes?.network || "TESTNET";
           } else if (!savedType || savedType === "freighter") {
             // Inside Freighter browser but not yet allowed → auto-request
             const result = await requestAccess();
-            if (!cancelled && !result?.error) {
-              const addrRes = await getAddress();
-              const addr    = unwrap(addrRes, "address") ?? addrRes;
-              const netRes  = await getNetwork();
-              const net     = unwrap(netRes, "network") ?? netRes ?? "TESTNET";
-              if (addr && isValidStellarAddress(addr)) {
-                localStorage.setItem(WALLET_TYPE, "freighter");
-                localStorage.removeItem(MANUAL_KEY);
-                setAccount(addr); setNetwork(net);
-                setWalletType("freighter"); setIsViewOnly(false);
-              }
-            }
+            if (result?.error) return;
+            addr = result?.address || "";
+            const netRes = await getNetwork();
+            net = netRes?.network || "TESTNET";
+          }
+
+          if (!cancelled && addr && isValidStellarAddress(addr)) {
+            localStorage.setItem(WALLET_TYPE, "freighter");
+            localStorage.removeItem(MANUAL_KEY);
+            setAccount(addr); setNetwork(net);
+            setWalletType("freighter"); setIsViewOnly(false);
           }
         } catch {}
       }
@@ -143,9 +138,17 @@ export function useFreighter() {
       setFreighterInstalled(true);
 
       const allowedRes     = await isAllowed();
-      const alreadyAllowed = unwrap(allowedRes, "isAllowed") ?? allowedRes ?? false;
+      const alreadyAllowed = allowedRes?.isAllowed ?? false;
 
-      if (!alreadyAllowed) {
+      let addr = "";
+      let net  = "TESTNET";
+
+      if (alreadyAllowed) {
+        const addrRes = await getAddress();
+        addr = addrRes?.address || "";
+        const netRes = await getNetwork();
+        net = netRes?.network || "TESTNET";
+      } else {
         let result;
         // Retry once — Freighter service worker may restart (causes "message port closed")
         for (let i = 0; i < 2; i++) {
@@ -159,18 +162,21 @@ export function useFreighter() {
             throw e;
           }
         }
-        if (result?.error) { setError(result.error); return false; }
+        if (result?.error) {
+          const errMsg = result.error?.message || String(result.error) || "Access denied";
+          setError(errMsg);
+          return false;
+        }
+        // requestAccess() returns { address } directly in Freighter API v6
+        addr = result?.address || "";
+        const netRes = await getNetwork();
+        net = netRes?.network || "TESTNET";
       }
 
-      const addrRes = await getAddress();
-      const addr    = unwrap(addrRes, "address") ?? addrRes;
       if (!addr || !isValidStellarAddress(addr)) {
         setError("Could not get wallet address. Please try again.");
         return false;
       }
-
-      const netRes = await getNetwork();
-      const net    = unwrap(netRes, "network") ?? netRes ?? "TESTNET";
 
       localStorage.setItem(WALLET_TYPE, "freighter");
       localStorage.removeItem(MANUAL_KEY);
@@ -276,8 +282,8 @@ export function useFreighter() {
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const result = await signTransaction(xdr, { networkPassphrase: passphrase, address: account });
-        if (result?.error) throw new Error(result.error);
-        const signed = unwrap(result, "signedTxXdr");
+        if (result?.error) throw new Error(result.error?.message || String(result.error));
+        const signed = result?.signedTxXdr || null;
         if (!signed) throw new Error("Freighter returned empty signature");
         return signed;
       } catch (err) {
