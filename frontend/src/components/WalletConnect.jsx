@@ -120,6 +120,28 @@ const WALLETS = [
   },
 ];
 
+function CopyUrlButton({ url }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard?.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div className="mt-2 bg-stellar-900/60 border border-stellar-700/40 rounded-xl px-3 py-2 flex items-center gap-2">
+      <span className="font-mono text-xs text-indigo-300 flex-1 truncate">{url}</span>
+      <button
+        onClick={copy}
+        className={`flex-shrink-0 text-xs font-semibold px-3 py-1 rounded-lg transition-colors ${
+          copied ? "bg-green-700/50 text-green-300" : "bg-indigo-700/50 text-indigo-300 hover:bg-indigo-600/50"
+        }`}
+      >
+        {copied ? "Copied ✓" : "Copy"}
+      </button>
+    </div>
+  );
+}
+
 const NETWORK_BADGE = {
   PUBLIC: "badge-green",
   TESTNET: "badge-yellow",
@@ -159,102 +181,120 @@ export function WalletConnect({
     setConnectingId(null);
   };
 
-  // ── Mobile: Freighter mobile in-app browser flow ──────────────────────────
-  if (mobile && !account) {
+  // ── Mobile: inside Freighter browser → normal connect ────────────────────
+  if (mobile && !account && isFreighterInstalled) {
+    return (
+      <button
+        onClick={async () => { setConnectingId("freighter"); await onConnect(); setConnectingId(null); }}
+        disabled={isConnecting || !!connectingId}
+        className="btn-primary flex items-center gap-2"
+      >
+        {isConnecting || connectingId ? (
+          <><Loader2 size={15} className="animate-spin" /> Connecting…</>
+        ) : (
+          <><Wallet size={15} /> Connect Freighter</>
+        )}
+      </button>
+    );
+  }
+
+  // ── Mobile: NOT in Freighter browser → step-by-step guide ────────────────
+  if (mobile && !account && !isFreighterInstalled) {
     const appUrl = window.location.href;
     const isAndroid = /Android/i.test(navigator.userAgent);
     const storeUrl = isAndroid
       ? "https://play.google.com/store/apps/details?id=io.freighter"
       : "https://apps.apple.com/app/freighter/id1669889725";
 
+    const steps = [
+      {
+        title: "Install Freighter Mobile",
+        desc: "Download the official Freighter wallet app",
+        action: (
+          <a
+            href={storeUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl transition-colors"
+          >
+            <ExternalLink size={12} />
+            {isAndroid ? "Download on Google Play" : "Download on App Store"}
+          </a>
+        ),
+      },
+      {
+        title: 'Open Freighter → tap "Browser" 🌐',
+        desc: "In the bottom nav, tap the Globe icon to open Freighter's in-app browser",
+        action: null,
+      },
+      {
+        title: "Paste this URL and go",
+        desc: "Copy the link below, paste it in Freighter's browser address bar, and press Enter",
+        action: (
+          <CopyUrlButton url={appUrl} />
+        ),
+      },
+      {
+        title: 'Tap "Connect Wallet" here',
+        desc: "Freighter will pop up automatically — tap Approve to connect",
+        action: null,
+      },
+    ];
+
     return (
       <>
         <button
           onClick={() => setShowModal(true)}
-          disabled={isConnecting}
           className="btn-primary flex items-center gap-2"
         >
-          {isConnecting ? (
-            <><Loader2 size={15} className="animate-spin" /> Connecting…</>
-          ) : (
-            <><Smartphone size={15} /> Connect Wallet</>
-          )}
+          <Smartphone size={15} /> Connect Wallet
         </button>
 
         {showModal && (
           <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-            style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+            className="fixed inset-0 z-50 flex items-end justify-center"
+            style={{ background: "rgba(0,0,0,0.80)", backdropFilter: "blur(6px)" }}
             onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
           >
-            <div className="w-full max-w-md bg-stellar-900 border border-stellar-700/50 rounded-2xl shadow-2xl overflow-hidden">
+            <div className="w-full max-w-lg bg-stellar-900 border border-stellar-700/50 rounded-t-3xl shadow-2xl overflow-hidden">
+              {/* Handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-stellar-700" />
+              </div>
+
               {/* Header */}
-              <div className="flex items-center justify-between px-5 py-4 border-b border-stellar-800/50">
+              <div className="flex items-center justify-between px-5 py-3 border-b border-stellar-800/50">
                 <div>
-                  <h2 className="font-bold text-gray-100 text-lg">Connect Wallet</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">Use Freighter on mobile</p>
+                  <h2 className="font-bold text-gray-100 text-base">Connect Wallet on Mobile</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Follow these steps to use Freighter</p>
                 </div>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="text-gray-500 hover:text-gray-300 p-1.5 rounded-lg hover:bg-stellar-800/50 transition-colors"
-                >
+                <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-300 p-1.5 rounded-xl hover:bg-stellar-800/50 transition-colors">
                   <X size={18} />
                 </button>
               </div>
 
-              <div className="p-5 space-y-4">
-                {/* Step 1 */}
-                <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">1</div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-100">Install Freighter Mobile</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Download the official Freighter wallet app</p>
-                    <a
-                      href={storeUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors"
-                    >
-                      <ExternalLink size={12} />
-                      {isAndroid ? "Google Play" : "App Store"}
-                    </a>
-                  </div>
-                </div>
-
-                {/* Step 2 */}
-                <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">2</div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-100">Open this app in Freighter</p>
-                    <p className="text-xs text-gray-500 mt-0.5 break-all">
-                      Inside Freighter → tap <strong className="text-gray-300">Browser</strong> → paste:
-                    </p>
-                    <div className="mt-2 bg-stellar-800/60 border border-stellar-700/40 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
-                      <span className="font-mono text-xs text-indigo-300 truncate">{appUrl}</span>
-                      <button
-                        onClick={() => navigator.clipboard?.writeText(appUrl)}
-                        className="text-gray-500 hover:text-gray-300 flex-shrink-0 text-xs border border-stellar-700/40 rounded px-2 py-0.5"
-                      >
-                        Copy
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Step 3 */}
-                <div className="flex gap-3">
-                  <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">3</div>
-                  <div>
-                    <p className="text-sm font-semibold text-gray-100">Tap "Connect Wallet"</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Freighter will prompt you to approve the connection</p>
-                  </div>
-                </div>
+              {/* Warning */}
+              <div className="mx-4 mt-4 flex items-start gap-2 bg-amber-900/20 border border-amber-700/30 rounded-xl px-3 py-2.5">
+                <AlertCircle size={14} className="text-amber-400 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-300">
+                  <strong>Do NOT use Chrome or Safari</strong> — wallet connection only works inside Freighter's browser
+                </p>
               </div>
 
-              <div className="px-5 pb-5">
-                <p className="text-xs text-center text-gray-600">
-                  Freighter is the official Stellar wallet by the Stellar Development Foundation
-                </p>
+              {/* Steps */}
+              <div className="p-4 space-y-3 pb-6">
+                {steps.map((step, i) => (
+                  <div key={i} className="flex gap-3 bg-stellar-800/20 border border-stellar-800/40 rounded-2xl px-4 py-3">
+                    <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">
+                      {i + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-100">{step.title}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{step.desc}</p>
+                      {step.action}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
