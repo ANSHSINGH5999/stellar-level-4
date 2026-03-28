@@ -5,7 +5,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import * as Sentry from "@sentry/react";
-import { COOLDOWN_SECONDS } from "../lib/stellar.js";
+import { COOLDOWN_SECONDS, IS_CONFIGURED } from "../lib/stellar.js";
 
 function formatCountdown(cooldownEnd) {
   if (!cooldownEnd || !(cooldownEnd instanceof Date) || isNaN(cooldownEnd.getTime())) return null;
@@ -50,6 +50,21 @@ export function StakingPanel({
   const canUnstake = cooldownEnd instanceof Date &&
     !isNaN(cooldownEnd.getTime()) &&
     cooldownEnd.getTime() <= Date.now();
+
+  if (!IS_CONFIGURED) {
+    return (
+      <div className="card space-y-3">
+        <h2 className="font-bold text-gray-100 text-lg">Staking</h2>
+        <div className="border border-yellow-500/30 bg-yellow-900/10 rounded-xl p-4 text-center">
+          <p className="text-yellow-300 text-sm font-medium mb-1">App not configured</p>
+          <p className="text-yellow-600 text-xs">
+            <code className="font-mono bg-black/30 px-1 rounded">VITE_STLR_ISSUER</code> is missing.
+            Add environment variables in Vercel and redeploy.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card space-y-5">
