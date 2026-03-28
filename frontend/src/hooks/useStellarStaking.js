@@ -22,7 +22,7 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
     async (operations, coSigners = []) => {
       const acct = await server.loadAccount(account);
       const builder = new StellarSdk.TransactionBuilder(acct, {
-        fee: StellarSdk.BASE_FEE,
+        fee: BASE_FEE,
         networkPassphrase: NETWORK_PASSPHRASE,
       });
       for (const op of operations) builder.addOperation(op);
@@ -76,7 +76,7 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
       const stakingKP = StellarSdk.Keypair.fromSecret(secret);
       const stakingAcct = await server.loadAccount(STAKING_ACCOUNT);
       const tx = new StellarSdk.TransactionBuilder(stakingAcct, {
-        fee: StellarSdk.BASE_FEE,
+        fee: BASE_FEE,
         networkPassphrase: NETWORK_PASSPHRASE,
       })
         .addOperation(
@@ -189,13 +189,13 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
         }
 
         const payTx = new StellarSdk.TransactionBuilder(stakingAcct, {
-          fee: StellarSdk.BASE_FEE,
+          fee: BASE_FEE,
           networkPassphrase: NETWORK_PASSPHRASE,
         });
         for (const op of payOps) payTx.addOperation(op);
         const builtPayTx = payTx.setTimeout(180).build();
         builtPayTx.sign(stakingKP);
-        await server.submitTransaction(builtPayTx);
+        const payResult = await server.submitTransaction(builtPayTx);
 
         // Clear staking metadata from user account (only keys that exist)
         const data = await loadDataAttr();
@@ -204,7 +204,7 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
         if (data["stlr_staked_at"])     clearOps.push(StellarSdk.Operation.manageData({ name: "stlr_staked_at",     value: null }));
         if (data["stlr_cooldown_start"]) clearOps.push(StellarSdk.Operation.manageData({ name: "stlr_cooldown_start", value: null }));
 
-        if (clearOps.length === 0) return builtPayTx.hash;
+        if (clearOps.length === 0) return payResult.hash;
 
         const hash = await buildSign(clearOps);
         if (onRefresh) setTimeout(onRefresh, 2000);
@@ -230,7 +230,7 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
         const rewardStr = Math.min(rewardNum, 999999).toFixed(7);
         const stakingAcct = await server.loadAccount(STAKING_ACCOUNT);
         const tx = new StellarSdk.TransactionBuilder(stakingAcct, {
-          fee: StellarSdk.BASE_FEE,
+          fee: BASE_FEE,
           networkPassphrase: NETWORK_PASSPHRASE,
         })
           .addOperation(

@@ -105,8 +105,7 @@ export function EventFeed({ events, isListening, onClear }) {
 
       {/* Type legend */}
       <div className="flex flex-wrap gap-1.5 mb-3">
-        {["Staked", "Unstaked", "RewardsClaimed", "TrustlineSet"].map((type) => {
-          const cfg = EVENT_CONFIG[type];
+        {Object.entries(EVENT_CONFIG).map(([type, cfg]) => {
           const Icon = cfg.icon;
           return (
             <span key={type} className={`badge border ${cfg.bg} ${cfg.color}`}>

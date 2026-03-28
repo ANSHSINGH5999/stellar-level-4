@@ -186,7 +186,7 @@ export function useFreighter() {
   const disconnect = useCallback(() => {
     localStorage.removeItem(MANUAL_KEY);
     localStorage.removeItem(WALLET_TYPE);
-    setAccount(null); setNetwork(null);
+    setAccount(null); setNetwork("TESTNET");
     setWalletType(null); setIsViewOnly(false); setError(null);
   }, []);
 

@@ -32,8 +32,11 @@ export function getSTLRAsset() {
   return new StellarSdk.Asset("STLR", STLR_ISSUER);
 }
 
-/** True when the app is connected to real testnet accounts (always true with defaults). */
-export const IS_CONFIGURED = true;
+/** True when real env-var accounts are configured (not just fallback defaults). */
+export const IS_CONFIGURED = !!(
+  (import.meta.env.VITE_STLR_ISSUER || "").trim() &&
+  (import.meta.env.VITE_STAKING_ACCOUNT || "").trim()
+);
 
 export const STLR_ASSET = (() => {
   try { return new StellarSdk.Asset("STLR", STLR_ISSUER); } catch { return null; }
@@ -93,33 +96,6 @@ export function hasTrustline(balances) {
   return balances.some(
     (b) => b.asset_code === "STLR" && b.asset_issuer === STLR_ISSUER
   );
-}
-
-/** Build + sign + submit a Stellar transaction via Freighter */
-export async function buildAndSign(sourcePublicKey, operations, signFn) {
-  const account = await server.loadAccount(sourcePublicKey);
-  let builder = new StellarSdk.TransactionBuilder(account, {
-    fee: BASE_FEE,
-    networkPassphrase: NETWORK_PASSPHRASE,
-  });
-  for (const op of operations) builder = builder.addOperation(op);
-  const tx = builder.setTimeout(60).build();
-  const xdr = tx.toXDR();
-
-  // Sign via Freighter
-  const signedXdr = await signFn(xdr, NETWORK_PASSPHRASE);
-  if (!signedXdr) throw new Error("Transaction signing was rejected");
-
-  const signedTx = StellarSdk.TransactionBuilder.fromXDR(signedXdr, NETWORK_PASSPHRASE);
-
-  // Co-sign with staking account if needed (reward distribution)
-  if (STAKING_SECRET) {
-    const stakingKP = StellarSdk.Keypair.fromSecret(STAKING_SECRET);
-    signedTx.sign(stakingKP);
-  }
-
-  const result = await server.submitTransaction(signedTx);
-  return result.hash;
 }
 
 /** Parse Stellar horizon error into readable message */

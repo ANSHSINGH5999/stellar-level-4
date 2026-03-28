@@ -37,6 +37,7 @@ export function XDRSigningModal({ xdr, label, onClose, onSuccess }) {
   const [signedXDR, setSignedXDR] = useState("");
   const [submitting, setSubmitting]   = useState(false);
   const [qrDataUrl, setQrDataUrl]     = useState("");
+  const [qrError, setQrError]         = useState(false);
   const [step, setStep]               = useState(1); // 1=copy/scan, 2=paste
 
   // Generate QR code pointing to Stellar Lab with XDR pre-filled
@@ -48,7 +49,7 @@ export function XDRSigningModal({ xdr, label, onClose, onSuccess }) {
       color: { dark: "#e2e8f0", light: "#1e1b4b" },
     })
       .then(setQrDataUrl)
-      .catch(() => {}); // non-critical
+      .catch(() => setQrError(true));
   }, [xdr]);
 
   const submit = async () => {
@@ -158,13 +159,16 @@ export function XDRSigningModal({ xdr, label, onClose, onSuccess }) {
               </a>
 
               {/* QR code */}
-              {qrDataUrl && (
+              {qrDataUrl && !qrError && (
                 <div className="flex flex-col items-center gap-2 pt-2">
                   <p className="text-xs text-gray-500">Or scan to open Stellar Lab on another device</p>
                   <div className="p-3 bg-indigo-950 rounded-2xl border border-indigo-800/40">
                     <img src={qrDataUrl} alt="Stellar Lab QR" className="w-40 h-40" />
                   </div>
                 </div>
+              )}
+              {qrError && (
+                <p className="text-xs text-gray-600 text-center">QR generation failed — use the copy button or link above.</p>
               )}
 
               <button

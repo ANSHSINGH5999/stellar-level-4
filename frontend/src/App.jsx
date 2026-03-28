@@ -19,6 +19,21 @@ export default function App() {
   const freighter = useFreighter();
   const account = freighter.account;
 
+  // Shared props for WalletConnect — defined once to avoid duplication
+  const walletProps = {
+    account,
+    network:              freighter.network,
+    networkInfo:          freighter.networkInfo,
+    isConnecting:         freighter.isConnecting,
+    isFreighterInstalled: freighter.isFreighterInstalled,
+    isViewOnly:           freighter.isViewOnly,
+    walletType:           freighter.walletType,
+    error:                freighter.error,
+    onConnect:            freighter.connect,
+    onConnectManual:      freighter.connectManual,
+    onDisconnect:         freighter.disconnect,
+  };
+
   const data = useStellarData(account);
   const { events, isListening, clearEvents } = useStellarEvents(account);
 
@@ -58,19 +73,7 @@ export default function App() {
             </div>
           </div>
 
-          <WalletConnect
-            account={account}
-            network={freighter.network}
-            networkInfo={freighter.networkInfo}
-            isConnecting={freighter.isConnecting}
-            isFreighterInstalled={freighter.isFreighterInstalled}
-            isViewOnly={freighter.isViewOnly}
-            walletType={freighter.walletType}
-            error={freighter.error}
-            onConnect={freighter.connect}
-            onConnectManual={freighter.connectManual}
-            onDisconnect={freighter.disconnect}
-          />
+          <WalletConnect {...walletProps} />
         </div>
       </header>
 
@@ -126,19 +129,7 @@ export default function App() {
                 Connect Freighter or paste your address to get started.
               </p>
             </div>
-            <WalletConnect
-              account={account}
-              network={freighter.network}
-              networkInfo={freighter.networkInfo}
-              isConnecting={freighter.isConnecting}
-              isFreighterInstalled={freighter.isFreighterInstalled}
-              isViewOnly={freighter.isViewOnly}
-              walletType={freighter.walletType}
-              error={freighter.error}
-              onConnect={freighter.connect}
-              onConnectManual={freighter.connectManual}
-              onDisconnect={freighter.disconnect}
-            />
+            <WalletConnect {...walletProps} />
           </div>
         )}
 
