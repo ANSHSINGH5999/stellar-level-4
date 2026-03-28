@@ -4,7 +4,6 @@ import {
   getAddress,
   getNetwork,
   isAllowed,
-  isConnected,
   signTransaction,
 } from "@stellar/freighter-api";
 import * as StellarSdk from "@stellar/stellar-sdk";
@@ -19,103 +18,70 @@ export const STELLAR_NETWORKS = {
 const MANUAL_KEY  = "stellar_manual_address";
 const WALLET_TYPE = "stellar_wallet_type"; // 'freighter' | 'manual'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-// Wrap any promise with a hard timeout
-const withTimeout = (promise, ms, msg = "Freighter timed out — reopen the extension and try again.") =>
+// Wrap a promise with a hard timeout
+const withTimeout = (promise, ms, msg) =>
   Promise.race([
     promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error(msg)), ms)),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(msg || `Timed out after ${ms / 1000}s`)), ms)
+    ),
   ]);
-
-// Poll until check() returns true or timeout expires
-const waitFor = (check, timeout = 8000) =>
-  new Promise((resolve) => {
-    if (check()) { resolve(true); return; }
-    const start = Date.now();
-    const poll = () => {
-      if (check()) { resolve(true); return; }
-      if (Date.now() - start > timeout) { resolve(false); return; }
-      setTimeout(poll, 300);
-    };
-    poll();
-  });
-
-// Freighter injects window.freighter; use isConnected() (has built-in 2s timeout) to verify
-const hasFreighterObj = () => typeof window !== "undefined" && !!window.freighter;
-
-// Verify the extension is actually responding (not just injected)
-async function freighterResponds() {
-  try {
-    const res = await withTimeout(isConnected(), 3000, "timeout");
-    return !!res?.isConnected;
-  } catch {
-    return false;
-  }
-}
 
 export function isValidStellarAddress(addr) {
   try { return StellarSdk.StrKey.isValidEd25519PublicKey(addr?.trim()); }
   catch { return false; }
 }
 
-// ── Hook ──────────────────────────────────────────────────────────────────────
 export function useFreighter() {
   const [account, setAccount]       = useState(() => localStorage.getItem(MANUAL_KEY) || null);
   const [network, setNetwork]       = useState("TESTNET");
   const [walletType, setWalletType] = useState(() => localStorage.getItem(WALLET_TYPE) || null);
   const [isViewOnly, setIsViewOnly] = useState(() => localStorage.getItem(WALLET_TYPE) === "manual");
-  const [isFreighterInstalled, setFreighterInstalled] = useState(() => hasFreighterObj());
+  const [isFreighterInstalled, setFreighterInstalled] = useState(
+    () => typeof window !== "undefined" && !!window.freighter
+  );
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError]               = useState(null);
 
-  // ── Auto-detect + auto-reconnect on mount ────────────────────────────────
+  // ── Auto-reconnect on mount (silent — never shows popup) ─────────────────
   useEffect(() => {
     let cancelled = false;
 
     async function init() {
-      // Wait up to 3s for window.freighter to be injected by extension
-      const found = await waitFor(hasFreighterObj, 3000);
-      if (found && !cancelled) setFreighterInstalled(true);
+      // Detect window.freighter injection (up to 3s)
+      if (!window.freighter) {
+        await new Promise(resolve => {
+          const deadline = Date.now() + 3000;
+          const check = () => {
+            if (window.freighter || Date.now() > deadline) { resolve(); return; }
+            setTimeout(check, 300);
+          };
+          check();
+        });
+      }
+
+      if (window.freighter && !cancelled) setFreighterInstalled(true);
       if (cancelled) return;
 
-      if (!found) return;
-
-      // Verify extension is actually responding
-      const responding = await freighterResponds();
-      if (!responding || cancelled) return;
-
-      const savedType = localStorage.getItem(WALLET_TYPE);
-
+      // Only auto-reconnect if user already approved before (isAllowed check)
+      // This avoids showing a popup on page load
       try {
         const allowedRes = await withTimeout(isAllowed(), 5000);
-        const alreadyAllowed = allowedRes?.isAllowed ?? false;
+        if (!allowedRes?.isAllowed || cancelled) return;
 
-        let addr = "";
-        let net  = "TESTNET";
+        const addrRes = await withTimeout(getAddress(), 5000);
+        const addr = addrRes?.address || "";
+        if (!addr || !isValidStellarAddress(addr) || cancelled) return;
 
-        if (alreadyAllowed) {
-          const addrRes = await withTimeout(getAddress(), 5000);
-          addr = addrRes?.address || "";
-          const netRes = await withTimeout(getNetwork(), 5000);
-          net = netRes?.network || "TESTNET";
-        } else if (!savedType || savedType === "freighter") {
-          // Inside Freighter browser — auto-request
-          const result = await withTimeout(requestAccess(), 30000, "Freighter did not respond. Please approve in the extension.");
-          if (result?.error) return;
-          addr = result?.address || "";
-          const netRes = await withTimeout(getNetwork(), 5000);
-          net = netRes?.network || "TESTNET";
-        }
+        const netRes = await withTimeout(getNetwork(), 5000);
+        const net = netRes?.network || "TESTNET";
 
-        if (!cancelled && addr && isValidStellarAddress(addr)) {
-          localStorage.setItem(WALLET_TYPE, "freighter");
-          localStorage.removeItem(MANUAL_KEY);
-          setAccount(addr); setNetwork(net);
-          setWalletType("freighter"); setIsViewOnly(false);
-        }
+        localStorage.setItem(WALLET_TYPE, "freighter");
+        localStorage.removeItem(MANUAL_KEY);
+        setAccount(addr); setNetwork(net);
+        setWalletType("freighter"); setIsViewOnly(false);
       } catch {
-        // Silently fail on auto-reconnect — user can manually connect
+        // Silent — user will manually connect
       }
     }
 
@@ -124,84 +90,75 @@ export function useFreighter() {
   }, []);
 
   // ── Freighter connect ─────────────────────────────────────────────────────
+  // Direct approach: call requestAccess() immediately — this IS the Freighter popup trigger.
+  // No pre-flight isAllowed/isConnected checks that can block it.
   const connect = useCallback(async () => {
-    setIsConnecting(true); setError(null);
+    setIsConnecting(true);
+    setError(null);
+
     try {
-      // Step 1: wait for window.freighter injection
-      const found = await waitFor(hasFreighterObj, 8000);
-      if (!found) {
-        setError("Freighter not found. Install the extension or open this app inside Freighter's browser tab.");
+      console.log("[Freighter] Calling requestAccess()…");
+
+      // requestAccess() shows the Freighter approval popup.
+      // If Freighter is not installed it hangs — so we give it 15s to respond.
+      const access = await withTimeout(
+        requestAccess(),
+        15000,
+        "Freighter not responding — make sure the extension is installed and open this app inside Freighter's browser tab."
+      );
+
+      console.log("[Freighter] requestAccess result:", access);
+
+      if (access?.error) {
+        const msg = access.error?.message || String(access.error) || "Access denied";
+        setError(msg);
         return false;
       }
-      setFreighterInstalled(true);
 
-      // Step 2: verify it's actually responding (catches sleeping MV3 service worker)
-      const responding = await freighterResponds();
-      if (!responding) {
-        setError("Freighter is not responding. Force-close the extension, reopen it, then try again.");
-        return false;
-      }
+      // Freighter API v6: requestAccess() returns { address } directly
+      let addr = access?.address || "";
 
-      // Step 3: check if already allowed
-      const allowedRes = await withTimeout(isAllowed(), 5000);
-      const alreadyAllowed = allowedRes?.isAllowed ?? false;
-
-      let addr = "";
-      let net  = "TESTNET";
-
-      if (alreadyAllowed) {
+      // Fallback: call getAddress() in case address was empty in the access result
+      if (!addr) {
+        console.log("[Freighter] address empty from requestAccess, calling getAddress()…");
         const addrRes = await withTimeout(getAddress(), 5000);
         addr = addrRes?.address || "";
-        const netRes = await withTimeout(getNetwork(), 5000);
-        net = netRes?.network || "TESTNET";
-      } else {
-        // Step 4: request permission — retry once for MV3 service worker restart
-        let result;
-        for (let i = 0; i < 2; i++) {
-          try {
-            result = await withTimeout(requestAccess(), 60000, "Freighter did not respond. Please approve or reject in the extension.");
-            break;
-          } catch (e) {
-            const isPortErr = e?.message?.includes("message channel closed") ||
-              e?.message?.includes("listener indicated") ||
-              e?.message?.includes("timed out");
-            if (isPortErr && i === 0) {
-              await new Promise(r => setTimeout(r, 1000));
-              continue;
-            }
-            throw e;
-          }
-        }
-
-        if (result?.error) {
-          const errMsg = result.error?.message || String(result.error) || "Access denied";
-          setError(errMsg);
-          return false;
-        }
-
-        // Freighter API v6: requestAccess() returns { address } directly
-        addr = result?.address || "";
-        const netRes = await withTimeout(getNetwork(), 5000);
-        net = netRes?.network || "TESTNET";
       }
+
+      console.log("[Freighter] address:", addr);
 
       if (!addr || !isValidStellarAddress(addr)) {
-        setError("Could not get wallet address. Make sure your Freighter account is set up, then try again.");
+        setError("Could not get wallet address. Make sure your Freighter account is set up.");
         return false;
       }
+
+      const netRes = await withTimeout(getNetwork(), 5000);
+      const net = netRes?.network || "TESTNET";
 
       localStorage.setItem(WALLET_TYPE, "freighter");
       localStorage.removeItem(MANUAL_KEY);
       setAccount(addr); setNetwork(net);
       setWalletType("freighter"); setIsViewOnly(false);
+
+      console.log("[Freighter] Connected!", addr, net);
       return true;
+
     } catch (err) {
       Sentry.captureException(err);
       const msg = err?.message || String(err) || "Connection failed";
-      if (msg.includes("timed out") || msg.includes("message channel closed") || msg.includes("listener indicated")) {
-        setError("Freighter timed out. Force-close and reopen the extension, then try again.");
-      } else if (msg.toLowerCase().includes("declined") || msg.toLowerCase().includes("denied") || msg.toLowerCase().includes("rejected")) {
+      console.error("[Freighter] connect error:", msg);
+
+      if (msg.includes("not responding") || msg.includes("Timed out") || msg.includes("timed out")) {
+        setError("Freighter not found — install the extension or open this app inside Freighter's browser tab.");
+      } else if (
+        msg.toLowerCase().includes("declined") ||
+        msg.toLowerCase().includes("denied") ||
+        msg.toLowerCase().includes("rejected") ||
+        msg.toLowerCase().includes("user cancelled")
+      ) {
         setError("Connection rejected — tap Approve in Freighter.");
+      } else if (msg.includes("message channel closed") || msg.includes("listener indicated")) {
+        setError("Freighter disconnected — force-close it, reopen, then try again.");
       } else {
         setError(msg);
       }
@@ -248,7 +205,7 @@ export function useFreighter() {
         const result = await withTimeout(
           signTransaction(xdr, { networkPassphrase: passphrase, address: account }),
           60000,
-          "Freighter signing timed out. Please approve in the extension."
+          "Freighter signing timed out — please approve in the extension."
         );
         if (result?.error) throw new Error(result.error?.message || String(result.error));
         const signed = result?.signedTxXdr || null;
