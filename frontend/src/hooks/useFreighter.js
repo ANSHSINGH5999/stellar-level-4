@@ -11,7 +11,10 @@ export const STELLAR_NETWORKS = {
 export function useFreighter() {
   const [account, setAccount] = useState(null);
   const [network, setNetwork] = useState(null);
-  const [isFreighterInstalled, setIsFreighterInstalled] = useState(false);
+  // Sync check — window.freighter is injected by Freighter browser before JS runs
+  const [isFreighterInstalled, setIsFreighterInstalled] = useState(
+    () => typeof window !== "undefined" && !!window.freighter
+  );
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -23,7 +26,7 @@ export function useFreighter() {
     return result; // plain value (older API versions)
   }
 
-  // Check if Freighter is installed on mount
+  // Async double-check + auto-reconnect if previously allowed
   useEffect(() => {
     let cancelled = false;
     async function check() {
@@ -31,7 +34,7 @@ export function useFreighter() {
         const result = await FreighterAPI.isConnected();
         const installed = unwrap(result, "isConnected") ?? result ?? false;
         if (cancelled) return;
-        setIsFreighterInstalled(!!installed);
+        if (installed) setIsFreighterInstalled(true);
 
         if (installed) {
           const allowedResult = await FreighterAPI.isAllowed();
@@ -48,7 +51,7 @@ export function useFreighter() {
           }
         }
       } catch {
-        if (!cancelled) setIsFreighterInstalled(false);
+        // keep sync value — don't override window.freighter check
       }
     }
     check();

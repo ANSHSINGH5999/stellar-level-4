@@ -282,7 +282,7 @@ export function WalletConnect({
               </div>
 
               {/* Steps */}
-              <div className="p-4 space-y-3 pb-6">
+              <div className="p-4 space-y-3">
                 {steps.map((step, i) => (
                   <div key={i} className="flex gap-3 bg-stellar-800/20 border border-stellar-800/40 rounded-2xl px-4 py-3">
                     <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">
@@ -295,6 +295,21 @@ export function WalletConnect({
                     </div>
                   </div>
                 ))}
+              </div>
+
+              {/* Already in Freighter? Try connect directly */}
+              <div className="px-4 pb-6 pt-2">
+                <div className="border-t border-stellar-800/50 pt-4">
+                  <p className="text-xs text-gray-500 text-center mb-3">
+                    Already opened this app inside Freighter browser?
+                  </p>
+                  <button
+                    onClick={async () => { setShowModal(false); await onConnect(); }}
+                    className="w-full btn-primary flex items-center justify-center gap-2 py-3"
+                  >
+                    <Wallet size={15} /> Connect Now
+                  </button>
+                </div>
               </div>
             </div>
           </div>
