@@ -17,9 +17,12 @@ export const STLR_ISSUER = import.meta.env.VITE_STLR_ISSUER || "";
 
 /** Always returns a proper Asset instance, throws a clear error if issuer is missing. */
 export function getSTLRAsset() {
-  if (!STLR_ISSUER) throw new Error("STLR token not configured — run npm run setup first");
+  if (!STLR_ISSUER) throw new Error("STLR issuer not configured — set VITE_STLR_ISSUER in environment variables");
   return new StellarSdk.Asset("STLR", STLR_ISSUER);
 }
+
+/** True when all required environment variables are present */
+export const IS_CONFIGURED = !!(STLR_ISSUER && STAKING_ACCOUNT);
 
 // Backwards-compat alias for code that reads STLR_ASSET directly
 export const STLR_ASSET = STLR_ISSUER ? new StellarSdk.Asset("STLR", STLR_ISSUER) : null;

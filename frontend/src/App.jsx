@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { Toaster } from "react-hot-toast";
-import { Star, Github, ExternalLink, RefreshCw, Wallet } from "lucide-react";
+import { Star, Github, ExternalLink, RefreshCw, Wallet, AlertTriangle } from "lucide-react";
 import { useFreighter } from "./hooks/useFreighter.js";
 import { useStellarData } from "./hooks/useStellarData.js";
 import { useStellarStaking } from "./hooks/useStellarStaking.js";
@@ -10,7 +10,7 @@ import { TokenInfo } from "./components/TokenInfo.jsx";
 import { StakingPanel } from "./components/StakingPanel.jsx";
 import { SplashScreen } from "./components/SplashScreen.jsx";
 import { EventFeed } from "./components/EventFeed.jsx";
-import { APY_RATE } from "./lib/stellar.js";
+import { APY_RATE, IS_CONFIGURED } from "./lib/stellar.js";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -73,6 +73,21 @@ export default function App() {
 
       {/* ── Main ── */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
+
+        {/* Config warning — only shown when env vars are missing */}
+        {!IS_CONFIGURED && (
+          <div className="flex items-start gap-3 bg-yellow-900/20 border border-yellow-500/30 rounded-xl px-4 py-3">
+            <AlertTriangle size={16} className="text-yellow-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-yellow-300 text-sm font-medium">Environment not configured</p>
+              <p className="text-yellow-600 text-xs mt-0.5">
+                Set <code className="font-mono bg-black/30 px-1 rounded">VITE_STLR_ISSUER</code> and{" "}
+                <code className="font-mono bg-black/30 px-1 rounded">VITE_STAKING_ACCOUNT</code> in your
+                environment, then rebuild. Run <code className="font-mono bg-black/30 px-1 rounded">npm run setup</code> locally to generate accounts.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Not connected */}
         {!account && (
