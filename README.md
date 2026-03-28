@@ -262,7 +262,22 @@ Vercel uses `vercel.json` at the root which sets:
 
 ### Environment variables to set in Vercel dashboard
 
-Go to **Vercel → Project → Settings → Environment Variables** and add:
+Go to **Vercel → Project → Settings → Environment Variables**.
+
+**Quickest method — click "Import .env"** on that page and paste the entire block below
+(replace the two `S...` secret values with the real ones from `frontend/.env` on your machine):
+
+```env
+VITE_HORIZON_URL=https://horizon-testnet.stellar.org
+VITE_NETWORK_PASSPHRASE=Test SDF Network ; September 2015
+VITE_NETWORK=TESTNET
+VITE_STLR_ISSUER=GCTWILTRMEWG4ZNWK6GTT5XRBR7BXZZ2PSRQ5PMDKTFDTZSPKKNLBSJO
+VITE_STLR_ISSUER_SECRET=<your secret from frontend/.env>
+VITE_STAKING_ACCOUNT=GDBLLO3W3ZSOWJP2PG6R3MLKUUXN5M6KPVOBADG5WRPIVJFLDPRFGJXF
+VITE_STAKING_SECRET=<your secret from frontend/.env>
+```
+
+Or add them one-by-one:
 
 | Variable | Value |
 |----------|-------|
@@ -270,9 +285,11 @@ Go to **Vercel → Project → Settings → Environment Variables** and add:
 | `VITE_NETWORK_PASSPHRASE` | `Test SDF Network ; September 2015` |
 | `VITE_NETWORK` | `TESTNET` |
 | `VITE_STLR_ISSUER` | `GCTWILTRMEWG4ZNWK6GTT5XRBR7BXZZ2PSRQ5PMDKTFDTZSPKKNLBSJO` |
-| `VITE_STLR_ISSUER_SECRET` | *(your issuer secret from setup)* |
+| `VITE_STLR_ISSUER_SECRET` | *(secret key — from `frontend/.env` on your machine)* |
 | `VITE_STAKING_ACCOUNT` | `GDBLLO3W3ZSOWJP2PG6R3MLKUUXN5M6KPVOBADG5WRPIVJFLDPRFGJXF` |
-| `VITE_STAKING_SECRET` | *(your staking secret from setup)* |
+| `VITE_STAKING_SECRET` | *(secret key — from `frontend/.env` on your machine)* |
+
+After saving, go to **Deployments → top deployment → Redeploy** to apply.
 
 ---
 
@@ -301,15 +318,15 @@ Push to main → Install → Build → Deploy to Vercel (production)
 
 Set these in **GitHub → Repository → Settings → Secrets and variables → Actions**:
 
-| Secret | Description |
-|--------|-------------|
-| `VITE_STLR_ISSUER` | STLR issuer public key |
-| `VITE_STLR_ISSUER_SECRET` | STLR issuer secret key |
-| `VITE_STAKING_ACCOUNT` | Staking escrow public key |
-| `VITE_STAKING_SECRET` | Staking escrow secret key |
-| `VERCEL_TOKEN` | Vercel API token (from vercel.com/account/tokens) |
-| `VERCEL_ORG_ID` | Vercel org ID (from `.vercel/project.json` after `vercel link`) |
-| `VERCEL_PROJECT_ID` | Vercel project ID (from `.vercel/project.json`) |
+| Secret | Value |
+|--------|-------|
+| `VITE_STLR_ISSUER` | `GCTWILTRMEWG4ZNWK6GTT5XRBR7BXZZ2PSRQ5PMDKTFDTZSPKKNLBSJO` |
+| `VITE_STLR_ISSUER_SECRET` | *(secret — from `frontend/.env`)* |
+| `VITE_STAKING_ACCOUNT` | `GDBLLO3W3ZSOWJP2PG6R3MLKUUXN5M6KPVOBADG5WRPIVJFLDPRFGJXF` |
+| `VITE_STAKING_SECRET` | *(secret — from `frontend/.env`)* |
+| `VERCEL_TOKEN` | Vercel API token — vercel.com → Account Settings → Tokens |
+| `VERCEL_ORG_ID` | From `.vercel/project.json` after running `vercel link` |
+| `VERCEL_PROJECT_ID` | From `.vercel/project.json` after running `vercel link` |
 | `VITE_SENTRY_DSN` | *(optional)* Sentry DSN for error tracking |
 
 ---
