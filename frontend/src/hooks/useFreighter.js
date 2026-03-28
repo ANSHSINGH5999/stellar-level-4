@@ -146,7 +146,19 @@ export function useFreighter() {
       const alreadyAllowed = unwrap(allowedRes, "isAllowed") ?? allowedRes ?? false;
 
       if (!alreadyAllowed) {
-        const result = await requestAccess();
+        let result;
+        // Retry once — Freighter service worker may restart (causes "message port closed")
+        for (let i = 0; i < 2; i++) {
+          try {
+            result = await requestAccess();
+            break;
+          } catch (e) {
+            const isPortErr = e?.message?.includes("message channel closed") ||
+              e?.message?.includes("listener indicated");
+            if (isPortErr && i === 0) { await new Promise(r => setTimeout(r, 800)); continue; }
+            throw e;
+          }
+        }
         if (result?.error) { setError(result.error); return false; }
       }
 

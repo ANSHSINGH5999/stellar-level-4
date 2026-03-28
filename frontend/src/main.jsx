@@ -4,13 +4,28 @@ import * as Sentry from "@sentry/react";
 import App from "./App.jsx";
 import "./index.css";
 
-// Silence Stellar SDK's verbose default-logger warning in dev
+// Suppress known browser-extension noise from console
 if (typeof window !== "undefined") {
-  const _warn = console.warn.bind(console);
-  console.warn = (...args) => {
-    if (typeof args[0] === "string" && args[0].includes("DEFAULT root logger")) return;
-    _warn(...args);
-  };
+  const NOISE = [
+    "DEFAULT root logger",
+    "message channel closed",
+    "message port closed",
+    "A listener indicated an asynchronous response",
+    "Unchecked runtime.lastError",
+  ];
+  const shouldSuppress = (args) =>
+    args.some(a => typeof a === "string" && NOISE.some(n => a.includes(n)));
+
+  const _warn  = console.warn.bind(console);
+  const _error = console.error.bind(console);
+  console.warn  = (...args) => { if (!shouldSuppress(args)) _warn(...args); };
+  console.error = (...args) => { if (!shouldSuppress(args)) _error(...args); };
+
+  // Suppress unhandled promise rejections from extension message port closes
+  window.addEventListener("unhandledrejection", (e) => {
+    const msg = e?.reason?.message || String(e?.reason || "");
+    if (NOISE.some(n => msg.includes(n))) e.preventDefault();
+  });
 }
 
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
