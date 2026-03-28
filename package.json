@@ -8,7 +8,8 @@
     "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "dev": "cd frontend && npm run dev -- --port 3000",
     "build": "cd frontend && npm run build",
-    "preview": "cd frontend && npm run preview"
+    "preview": "cd frontend && npm run preview",
+    "deploy": "bash scripts/vercel-deploy.sh"
   },
   "devDependencies": {
     "jest": "^29.7.0",
