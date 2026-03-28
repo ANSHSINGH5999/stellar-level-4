@@ -5,7 +5,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Stellar DeFi - Stake STLR tokens and earn rewards on-chain" />
-    <meta name="theme-color" content="#4f46e5" />
+    <meta name="theme-color" content="#000000" />
     <!-- Open Graph -->
     <meta property="og:title" content="Stellar DeFi Platform" />
     <meta property="og:description" content="Stake STLR tokens and earn 12% APY rewards" />
@@ -13,10 +13,41 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
     <title>Stellar DeFi Platform</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body { height: 100%; background: #000; }
+      #root { min-height: 100%; }
+
+      /* Pre-React loading screen — removed as soon as React mounts */
+      #pre-loader {
+        position: fixed; inset: 0; z-index: 99999;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        background: #000; gap: 24px;
+      }
+      #pre-loader .spinner {
+        width: 48px; height: 48px; border-radius: 50%;
+        border: 3px solid rgba(255,255,255,0.08);
+        border-top-color: rgba(255,255,255,0.7);
+        animation: spin 0.9s linear infinite;
+      }
+      #pre-loader .label {
+        font-family: 'Inter', system-ui, sans-serif;
+        font-size: 11px; letter-spacing: 0.3em;
+        text-transform: uppercase; color: rgba(255,255,255,0.25);
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
+    <!-- Shown while the 1 MB JS bundle downloads; React removes it on first render -->
+    <div id="pre-loader">
+      <div class="spinner"></div>
+      <span class="label">Stellar DeFi</span>
+    </div>
+
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

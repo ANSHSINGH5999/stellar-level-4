@@ -53,6 +53,9 @@ function ErrorFallback({ error, resetError }) {
   );
 }
 
+// Remove the HTML pre-loader once React takes over
+document.getElementById("pre-loader")?.remove();
+
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <Sentry.ErrorBoundary fallback={ErrorFallback}>
