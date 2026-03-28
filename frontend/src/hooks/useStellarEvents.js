@@ -85,7 +85,7 @@ export function useStellarEvents(account) {
 
   /* ── load recent history on connect ─────────────────────────────────────── */
   const loadHistory = useCallback(async () => {
-    if (!account) return;
+    if (!account || !STAKING_ACCOUNT || !STLR_ISSUER) return;
 
     // A: Last 30 staking-account payments → Staked events
     try {

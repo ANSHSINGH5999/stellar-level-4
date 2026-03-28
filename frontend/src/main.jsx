@@ -4,6 +4,15 @@ import * as Sentry from "@sentry/react";
 import App from "./App.jsx";
 import "./index.css";
 
+// Silence Stellar SDK's verbose default-logger warning in dev
+if (typeof window !== "undefined") {
+  const _warn = console.warn.bind(console);
+  console.warn = (...args) => {
+    if (typeof args[0] === "string" && args[0].includes("DEFAULT root logger")) return;
+    _warn(...args);
+  };
+}
+
 const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
 
 if (SENTRY_DSN) {
