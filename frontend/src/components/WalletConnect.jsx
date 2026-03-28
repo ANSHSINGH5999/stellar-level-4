@@ -184,17 +184,25 @@ export function WalletConnect({
   // ── Mobile: inside Freighter browser → normal connect ────────────────────
   if (mobile && !account && isFreighterInstalled) {
     return (
-      <button
-        onClick={async () => { setConnectingId("freighter"); await onConnect(); setConnectingId(null); }}
-        disabled={isConnecting || !!connectingId}
-        className="btn-primary flex items-center gap-2"
-      >
-        {isConnecting || connectingId ? (
-          <><Loader2 size={15} className="animate-spin" /> Connecting…</>
-        ) : (
-          <><Wallet size={15} /> Connect Freighter</>
+      <div className="flex flex-col gap-2">
+        <button
+          onClick={async () => { setConnectingId("freighter"); await onConnect(); setConnectingId(null); }}
+          disabled={isConnecting || !!connectingId}
+          className="btn-primary flex items-center gap-2"
+        >
+          {isConnecting || connectingId ? (
+            <><Loader2 size={15} className="animate-spin" /> Connecting…</>
+          ) : (
+            <><Wallet size={15} /> Connect Freighter</>
+          )}
+        </button>
+        {error && (
+          <div className="flex items-start gap-1.5 bg-red-900/20 border border-red-700/30 rounded-xl px-3 py-2 text-xs text-red-400">
+            <AlertCircle size={12} className="flex-shrink-0 mt-0.5" />
+            <span>{error}</span>
+          </div>
         )}
-      </button>
+      </div>
     );
   }
 
