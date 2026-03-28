@@ -1,8 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Wallet, LogOut, X, ExternalLink, CheckCircle2,
-  Star, AlertCircle, Loader2,
+  Star, AlertCircle, Loader2, Smartphone,
 } from "lucide-react";
+
+const isMobile = () =>
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    typeof navigator !== "undefined" ? navigator.userAgent : ""
+  );
 
 const WALLETS = [
   {
@@ -133,24 +138,38 @@ export function WalletConnect({
 }) {
   const [showModal, setShowModal] = useState(false);
   const [connectingId, setConnectingId] = useState(null);
+  const mobile = useMemo(() => isMobile(), []);
 
   const shortAddr = account
     ? `${account.slice(0, 6)}…${account.slice(-4)}`
     : null;
 
   const handleWalletClick = async (wallet) => {
-    if (wallet.id !== "freighter") {
-      window.open(wallet.installUrl, "_blank", "noopener,noreferrer");
+    if (wallet.id === "freighter") {
+      if (mobile) {
+        // On mobile Freighter extension doesn't exist — open LOBSTR instead
+        window.open("https://lobstr.co", "_blank", "noopener,noreferrer");
+        return;
+      }
+      if (!isFreighterInstalled) {
+        window.open("https://freighter.app", "_blank", "noopener,noreferrer");
+        return;
+      }
+      setConnectingId(wallet.id);
+      setShowModal(false);
+      await onConnect();
+      setConnectingId(null);
       return;
     }
-    if (!isFreighterInstalled) {
-      window.open("https://freighter.app", "_blank", "noopener,noreferrer");
+    if (wallet.id === "lobstr" && mobile) {
+      // Deep-link into LOBSTR's in-app browser with this DApp
+      const appUrl = encodeURIComponent(window.location.href);
+      window.location.href = `lobstr://browser?url=${appUrl}`;
+      // Fallback: open lobstr.co after short delay if app not installed
+      setTimeout(() => window.open("https://lobstr.co", "_blank", "noopener,noreferrer"), 1500);
       return;
     }
-    setConnectingId(wallet.id);
-    setShowModal(false);
-    await onConnect();
-    setConnectingId(null);
+    window.open(wallet.installUrl, "_blank", "noopener,noreferrer");
   };
 
   // Connected state
@@ -221,6 +240,17 @@ export function WalletConnect({
               </button>
             </div>
 
+            {/* Mobile notice */}
+            {mobile && (
+              <div className="mx-4 mt-4 flex items-start gap-2 text-sky-300 bg-sky-900/20 border border-sky-700/30 rounded-xl px-3 py-2.5 text-sm">
+                <Smartphone size={14} className="mt-0.5 flex-shrink-0" />
+                <span>
+                  On mobile, open this app inside the{" "}
+                  <strong className="text-sky-200">LOBSTR</strong> in-app browser — tap LOBSTR below.
+                </span>
+              </div>
+            )}
+
             {/* Error */}
             {error && (
               <div className="mx-4 mt-4 flex items-start gap-2 text-red-400 bg-red-900/20 border border-red-700/30 rounded-xl px-3 py-2.5 text-sm">
@@ -233,8 +263,11 @@ export function WalletConnect({
             <div className="p-3 space-y-1.5 max-h-[65vh] overflow-y-auto">
               {WALLETS.map((wallet) => {
                 const isActive = connectingId === wallet.id;
-                const isInstalled = wallet.id === "freighter" && isFreighterInstalled;
-                const needsInstall = wallet.id === "freighter" && !isFreighterInstalled;
+                const isInstalled = wallet.id === "freighter" && isFreighterInstalled && !mobile;
+                const needsInstall = wallet.id === "freighter" && !isFreighterInstalled && !mobile;
+                const desktopOnly = wallet.id === "freighter" && mobile;
+                const mobileRecommended = wallet.id === "lobstr" && mobile;
+                const showRecommended = mobileRecommended || (wallet.recommended && !mobile);
 
                 return (
                   <button
@@ -243,10 +276,11 @@ export function WalletConnect({
                     disabled={isActive}
                     className={[
                       "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all duration-150",
-                      wallet.recommended
+                      showRecommended
                         ? "bg-stellar-700/30 border border-stellar-500/40 hover:bg-stellar-700/50 hover:border-stellar-400/60"
                         : "bg-stellar-800/20 border border-stellar-800/30 hover:bg-stellar-800/40",
-                      isActive ? "opacity-60 cursor-wait" : "cursor-pointer",
+                      desktopOnly ? "opacity-40 cursor-not-allowed" : "",
+                      isActive ? "opacity-60 cursor-wait" : "",
                     ].join(" ")}
                   >
                     {wallet.icon}
@@ -257,9 +291,9 @@ export function WalletConnect({
                           {wallet.name}
                         </span>
 
-                        {wallet.recommended && (
+                        {showRecommended && (
                           <span className="inline-flex items-center gap-0.5 text-xs bg-stellar-600/40 text-stellar-300 border border-stellar-500/30 px-1.5 py-0.5 rounded-full font-medium">
-                            <Star size={9} fill="currentColor" /> Recommended
+                            <Star size={9} fill="currentColor" /> {mobileRecommended ? "Use on Mobile" : "Recommended"}
                           </span>
                         )}
 
@@ -269,7 +303,13 @@ export function WalletConnect({
                           </span>
                         )}
 
-                        {(needsInstall || wallet.id !== "freighter") && (
+                        {desktopOnly && (
+                          <span className="text-xs text-gray-500 flex items-center gap-0.5">
+                            Desktop only
+                          </span>
+                        )}
+
+                        {!desktopOnly && (needsInstall || wallet.id !== "freighter") && (
                           <span className="text-xs text-gray-500 flex items-center gap-0.5">
                             <ExternalLink size={9} />
                             {needsInstall ? "Install" : "Open"}
@@ -277,7 +317,7 @@ export function WalletConnect({
                         )}
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5 truncate">
-                        {wallet.description}
+                        {desktopOnly ? "Browser extension — not available on mobile" : wallet.description}
                       </p>
                     </div>
 
