@@ -1,12 +1,69 @@
 # Stellar DeFi Platform
 
-[![CI — Test & Build](https://github.com/YOUR_USERNAME/stellar-defi/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/stellar-defi/actions/workflows/ci.yml)
-[![Deploy](https://github.com/YOUR_USERNAME/stellar-defi/actions/workflows/deploy.yml/badge.svg)](https://github.com/YOUR_USERNAME/stellar-defi/actions/workflows/deploy.yml)
+[![CI — Lint & Build](https://github.com/ANSHSINGH5999/stellar-level-4/actions/workflows/ci.yml/badge.svg)](https://github.com/ANSHSINGH5999/stellar-level-4/actions/workflows/ci.yml)
+[![Deploy — Vercel](https://github.com/ANSHSINGH5999/stellar-level-4/actions/workflows/deploy.yml/badge.svg)](https://github.com/ANSHSINGH5999/stellar-level-4/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Stellar Network](https://img.shields.io/badge/Network-Stellar%20Testnet-blueviolet)](https://stellar.org)
+[![Freighter Wallet](https://img.shields.io/badge/Wallet-Freighter-6366f1)](https://freighter.app)
 
-A production-ready DeFi staking platform built on Ethereum. Stake **STLR** (StellarToken) to earn **12% APY** in on-chain rewards, with real-time event streaming, inter-contract communication, and a fully responsive frontend.
+A **production-ready DeFi staking platform** built entirely on the **Stellar Network**. Stake **STLR** tokens and earn **12% APY** in on-chain rewards — with real-time event streaming, multi-operation atomic transactions (Stellar's equivalent of inter-contract calls), and a fully responsive black-and-white UI.
 
-**Live Demo:** [https://stellar-defi.vercel.app](https://stellar-defi.vercel.app) *(deploy to activate)*
+**🚀 Live Demo:** [https://stellar-level-4.vercel.app](https://stellar-level-4.vercel.app)
+
+---
+
+## Table of Contents
+
+- [Architecture Overview](#architecture-overview)
+- [Technology Stack](#technology-stack)
+- [Stellar Accounts & Token](#stellar-accounts--token)
+- [Inter-Account Call Pattern](#inter-account-call-pattern)
+- [Real-Time Event Streaming](#real-time-event-streaming)
+- [Installation & Local Setup](#installation--local-setup)
+- [Deployment — Vercel](#deployment--vercel)
+- [CI/CD Pipeline](#cicd-pipeline)
+- [GitHub Secrets Required](#github-secrets-required)
+- [Mobile Responsive Design](#mobile-responsive-design)
+- [Wallet Support](#wallet-support)
+- [Security](#security)
+- [Project Structure](#project-structure)
+
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Stellar DeFi Platform                        │
+│                                                                 │
+│  ┌──────────────┐    Freighter     ┌──────────────────────────┐ │
+│  │   Browser    │◄────Wallet──────►│   Stellar Horizon API    │ │
+│  │  (React App) │                  │  horizon-testnet.stellar │ │
+│  └──────┬───────┘                  │       .org               │ │
+│         │                          └────────────┬─────────────┘ │
+│         │ Signs TX                              │ SSE Streams   │
+│         ▼                                       ▼               │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │              Stellar Testnet                              │  │
+│  │                                                           │  │
+│  │  ┌────────────────────┐    ┌────────────────────────┐   │  │
+│  │  │   STLR Issuer Acct │    │  Staking Escrow Acct   │   │  │
+│  │  │ GCTWILTRMEWG4ZNWK… │    │ GDBLLO3W3ZSOWJP2PG6R…  │   │  │
+│  │  │                    │    │                         │   │  │
+│  │  │ • Issues STLR      │    │ • Holds staked tokens  │   │  │
+│  │  │ • Stores APY rate  │    │ • 40M STLR reward pool │   │  │
+│  │  │   in ManageData    │    │ • Co-signs payouts     │   │  │
+│  │  └────────────────────┘    └────────────────────────┘   │  │
+│  │                                                           │  │
+│  │  ┌────────────────────────────────────────────────────┐  │  │
+│  │  │              User Wallet (Freighter)                │  │  │
+│  │  │ • stlr_staked_amount  ← ManageData (on-chain state)│  │  │
+│  │  │ • stlr_staked_at      ← Unix timestamp             │  │  │
+│  │  │ • stlr_cooldown_start ← Unstake cooldown timer     │  │  │
+│  │  └────────────────────────────────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -14,323 +71,358 @@ A production-ready DeFi staking platform built on Ethereum. Stake **STLR** (Stel
 
 | Layer | Technology | Version |
 |-------|-----------|---------|
-| Smart Contracts | Solidity | 0.8.24 |
-| Contract Framework | Hardhat | 2.22.x |
-| Contract Libraries | OpenZeppelin Contracts | 5.0.x |
-| Testing | Mocha + Chai | via Hardhat Toolbox |
-| Coverage | solidity-coverage | 0.8.x |
+| Blockchain | Stellar Network | Testnet |
+| Stellar SDK | @stellar/stellar-sdk | 14.6.x |
+| Wallet | Freighter (@stellar/freighter-api) | 6.0.x |
 | Frontend | React | 18.3.x |
 | Build Tool | Vite | 5.2.x |
 | Styling | Tailwind CSS | 3.4.x |
-| Blockchain Client | ethers.js | 6.11.x |
+| Node Polyfills | vite-plugin-node-polyfills | 0.25.x |
 | Error Tracking | Sentry | 7.x |
+| Notifications | react-hot-toast | 2.4.x |
+| Icons | lucide-react | 0.368.x |
 | CI/CD | GitHub Actions | — |
 | Hosting | Vercel | — |
 | Node.js | ≥ 18.0.0 | — |
 
 ---
 
-## Smart Contracts
+## Stellar Accounts & Token
 
-### Contract Overview
+### Live Testnet Accounts
 
-| Contract | Purpose | Address (Sepolia) |
-|----------|---------|-------------------|
-| `StellarToken.sol` | ERC-20 token with mint/burn/pause | `0x...` *(update after deploy)* |
-| `StellarStaking.sol` | Staking with APY rewards, cooldown, circuit breaker | `0x...` *(update after deploy)* |
+| Role | Public Key | Explorer |
+|------|-----------|---------|
+| **STLR Issuer** | `GCTWILTRMEWG4ZNWK6GTT5XRBR7BXZZ2PSRQ5PMDKTFDTZSPKKNLBSJO` | [View](https://stellar.expert/explorer/testnet/account/GCTWILTRMEWG4ZNWK6GTT5XRBR7BXZZ2PSRQ5PMDKTFDTZSPKKNLBSJO) |
+| **Staking Escrow** | `GDBLLO3W3ZSOWJP2PG6R3MLKUUXN5M6KPVOBADG5WRPIVJFLDPRFGJXF` | [View](https://stellar.expert/explorer/testnet/account/GDBLLO3W3ZSOWJP2PG6R3MLKUUXN5M6KPVOBADG5WRPIVJFLDPRFGJXF) |
 
-### Inter-Contract Communication
+### Setup Transaction Hashes
 
-```
-User Wallet
-    │
-    ├── stake(amount) ──────────────────────────────────────────►  StellarStaking
-    │                                                                     │
-    │                              ┌──────────────────────────────────────┘
-    │                              │  Cross-contract call #1:
-    │                              │  StellarToken.transferFrom(user → staking)
-    │                              ▼
-    │                         StellarToken
-    │
-    ├── claimRewards() ──────────────────────────────────────────► StellarStaking
-    │                                                                     │
-    │                              ┌──────────────────────────────────────┘
-    │                              │  Cross-contract call #2:
-    │                              │  StellarToken.mintRewards(user, amount)
-    │                              ▼
-    │                         StellarToken  ──► New STLR minted to user
-    │
-    └── unstake() ─────────────────────────────────────────────►  StellarStaking
-                                                                        │
-                             ┌──────────────────────────────────────────┘
-                             │  Cross-contract call #3:
-                             │  StellarToken.transfer(staking → user)
-                             ▼
-                        StellarToken  ──► STLR returned + rewards minted
-```
+| Action | Transaction Hash |
+|--------|----------------|
+| Trustline established (staking acct) | `7e88efbe2c2f40ddcda38cf3ba1f6a4efa2df3c3b0d169ee75e660efd7d5c1ed` |
+| 40M STLR minted to reward pool | `79a8306012507e5f34d9d713b915284a7711a89e409c701bc39ca01edec13680` |
 
-The staking contract is granted **minter rights** on the token contract via `StellarToken.setStakingContract()`. This is the trust link that enables `mintRewards()` to be called cross-contract without an owner approval on every reward claim.
-
----
-
-## Tokenomics (STLR)
+### Token Parameters (STLR)
 
 | Parameter | Value |
 |-----------|-------|
-| Token Name | StellarToken |
-| Symbol | STLR |
-| Decimals | 18 |
-| Max Supply | 100,000,000 STLR |
-| Initial Supply | 10,000,000 STLR (to deployer) |
-| Staking Rewards Pool | Up to 40,000,000 STLR (minted on-demand) |
-| Base APY | 12% (adjustable 0–50% by owner) |
-| Min Stake | 1 STLR |
-| Max Stake (per address) | 1,000,000 STLR |
+| Asset Code | `STLR` |
+| Network | Stellar Testnet |
+| Total Reward Pool | 40,000,000 STLR |
+| APY Rate | 12% per year |
 | Unstake Cooldown | 3 days |
+| Testnet Faucet | 10,000 STLR per request |
 
-**Reward Formula:**
+---
+
+## Inter-Account Call Pattern
+
+Stellar doesn't have smart contracts (unless using Soroban). Instead, this project uses **multi-operation atomic transactions** — multiple operations bundled in one transaction that either all succeed or all fail. This is the Stellar equivalent of inter-contract calls.
+
+### Stake Flow (4 operations, 1 transaction)
+
 ```
-reward = stakedAmount × apyRate × elapsedSeconds
-         ─────────────────────────────────────────
-               SECONDS_PER_YEAR × 10,000
+User signs 1 atomic transaction containing:
+
+  Op 1: Payment(user → staking_escrow, amount STLR)
+          ↳ Moves tokens to escrow = "lock" equivalent
+
+  Op 2: ManageData("stlr_staked_amount", amount)
+          ↳ Records stake on-chain in user's account data
+
+  Op 3: ManageData("stlr_staked_at", unix_timestamp)
+          ↳ Records start time for APY calculation
+
+  Op 4: ManageData("stlr_cooldown_start", null)   [if exists]
+          ↳ Clears any previous cooldown
+```
+
+### Unstake Flow (2 transactions)
+
+```
+Transaction A (staking escrow signs):
+  Op 1: Payment(staking_escrow → user, staked_amount STLR)
+  Op 2: Payment(staking_escrow → user, reward_amount STLR)  [if rewards > 0]
+
+Transaction B (user signs via Freighter):
+  Op 1: ManageData("stlr_staked_amount", null)   — clear state
+  Op 2: ManageData("stlr_staked_at",     null)
+  Op 3: ManageData("stlr_cooldown_start",null)
+```
+
+### Reward Calculation (off-chain, verified against on-chain timestamp)
+
+```
+reward = stakedAmount × APY_RATE × (elapsedSeconds / SECONDS_PER_YEAR)
+
+Where:
+  APY_RATE       = 0.12 (12%, read from issuer's ManageData on-chain)
+  elapsedSeconds = now() - stlr_staked_at  (stlr_staked_at from chain)
+  SECONDS_PER_YEAR = 31,536,000
 ```
 
 ---
 
-## Events Tracked (Real-Time)
+## Real-Time Event Streaming
 
-| Event | Contract | Description |
-|-------|---------|-------------|
-| `Staked` | StellarStaking | User staked STLR tokens |
-| `UnstakeRequested` | StellarStaking | User initiated 3-day cooldown |
-| `Unstaked` | StellarStaking | User withdrew staked tokens |
-| `RewardsClaimed` | StellarStaking | Staking rewards minted to user |
-| `TokensMinted` | StellarToken | New tokens minted (initial/rewards) |
-| `Transfer` | StellarToken | ERC-20 transfer (filtered to user) |
-| `CircuitBreakerTriggered` | Both | Emergency pause activated |
+Three parallel **Horizon SSE (Server-Sent Events)** streams with auto-reconnect and deduplication:
 
-The frontend subscribes via **ethers.js contract event listeners** (backed by WebSocket when the provider supports it, polling otherwise). Historical events from the last 500 blocks are loaded on connect.
+| Stream | Monitors | Events Emitted |
+|--------|---------|---------------|
+| A — Staking account payments | All payments TO staking escrow | `Staked` |
+| B — User account operations | ManageData changes on user's account | `TrustlineSet`, `UnstakeRequested`, `Unstaked`, `RewardsClaimed` |
+| C — User account payments | Native XLM payments | `AccountFunded` |
+
+**Deduplication:** Every event is keyed by `txHash + type` in a `Set` — the same transaction can never produce duplicate entries even if it triggers multiple streams simultaneously.
+
+**Auto-reconnect:** Each stream reconnects on error with exponential backoff (3s → 6s → 12s → 30s max).
 
 ---
 
-## Installation & Setup
+## Installation & Local Setup
 
 ### Prerequisites
+
 - Node.js ≥ 18.0.0
 - npm ≥ 9.0.0
-- MetaMask browser extension
+- [Freighter](https://freighter.app) browser extension installed
+- Freighter set to **Testnet** network
 
-### 1. Clone & Install
+### 1. Clone
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/stellar-defi.git
-cd stellar-defi
+git clone https://github.com/ANSHSINGH5999/stellar-level-4.git
+cd stellar-level-4
+```
 
-# Install contract dependencies
+### 2. Install dependencies
+
+```bash
+# Root (setup script dependencies)
 npm install
 
-# Install frontend dependencies
+# Frontend
 cd frontend && npm install && cd ..
 ```
 
-### 2. Configure Environment
+### 3. Configure environment
 
 ```bash
-cp .env.example .env
-# Edit .env with your private key and RPC URLs
+# Option A: Run the automated setup (creates fresh testnet accounts)
+npm run setup
+# This creates frontend/.env with real testnet credentials
+
+# Option B: Manual setup
+cp .env.example frontend/.env
+# Edit frontend/.env with your STLR issuer + staking account keys
 ```
 
-### 3. Run Locally
+> **Note:** `npm run setup` uses Stellar's Friendbot to fund accounts with 10,000 XLM each, sets up the STLR trustline, and issues 40,000,000 STLR to the staking reward pool — all on testnet automatically.
+
+### 4. Start dev server
 
 ```bash
-# Terminal 1 — start local Hardhat node
-npm run node
-
-# Terminal 2 — deploy contracts to local network
-npm run deploy:local
-
-# Terminal 3 — start frontend dev server
-cd frontend
-cp .env.example .env.local
-# Set VITE_TOKEN_ADDRESS and VITE_STAKING_ADDRESS from deploy output
 npm run dev
+# Opens http://localhost:3000
 ```
 
-The frontend will be available at `http://localhost:5173`.
+### 5. Use the app
+
+1. Open Freighter → switch to **Testnet**
+2. Visit `http://localhost:3000`
+3. Click **Connect Wallet** → select Freighter
+4. Click **Activate STLR Wallet** (sets trustline)
+5. Click **Get 10,000 STLR** (testnet faucet)
+6. Enter amount → **Stake STLR**
+7. Watch live reward counter update every second
 
 ---
 
-## Deployment
+## Deployment — Vercel
 
-### Testnet (Sepolia)
+### One-click deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/ANSHSINGH5999/stellar-level-4)
+
+### Manual deploy
 
 ```bash
-# Ensure .env has PRIVATE_KEY and SEPOLIA_RPC_URL set
-npm run deploy:sepolia
-```
+# Install Vercel CLI
+npm i -g vercel
 
-The deploy script will:
-1. Deploy `StellarToken`
-2. Deploy `StellarStaking`
-3. Call `setStakingContract()` to link them
-4. Save addresses to `deployments/sepolia.json`
-5. Copy ABIs to `frontend/src/abis/`
-
-Then deploy the frontend:
-```bash
-cd frontend
-# Create frontend/.env with deployed addresses
-echo "VITE_TOKEN_ADDRESS=0x..." > .env
-echo "VITE_STAKING_ADDRESS=0x..." >> .env
-npm run build
+# Deploy from project root
 vercel --prod
 ```
 
-### Mainnet
+Vercel uses `vercel.json` at the root which sets:
+- Build command: `cd frontend && npm install && npm run build`
+- Output directory: `frontend/dist`
+- SPA rewrites: all routes → `/index.html`
 
-The mainnet deployment requires manual approval via the **GitHub Actions `mainnet` environment** (configured in repo Settings → Environments). This prevents accidental mainnet deploys.
+### Environment variables to set in Vercel dashboard
 
-```bash
-# Trigger via GitHub Actions UI, or:
-gh workflow run deploy.yml -f network=mainnet
-```
+Go to **Vercel → Project → Settings → Environment Variables** and add:
+
+| Variable | Value |
+|----------|-------|
+| `VITE_HORIZON_URL` | `https://horizon-testnet.stellar.org` |
+| `VITE_NETWORK_PASSPHRASE` | `Test SDF Network ; September 2015` |
+| `VITE_NETWORK` | `TESTNET` |
+| `VITE_STLR_ISSUER` | `GCTWILTRMEWG4ZNWK6GTT5XRBR7BXZZ2PSRQ5PMDKTFDTZSPKKNLBSJO` |
+| `VITE_STLR_ISSUER_SECRET` | *(your issuer secret from setup)* |
+| `VITE_STAKING_ACCOUNT` | `GDBLLO3W3ZSOWJP2PG6R3MLKUUXN5M6KPVOBADG5WRPIVJFLDPRFGJXF` |
+| `VITE_STAKING_SECRET` | *(your staking secret from setup)* |
 
 ---
 
 ## CI/CD Pipeline
 
-Two GitHub Actions workflows handle automation:
+### `ci.yml` — runs on every push & PR
 
-### `ci.yml` — runs on every push
-1. **contracts** job: compile → test → coverage
-2. **frontend** job: install → build
-3. **lint** job: Solhint on all `.sol` files
+```
+Push/PR → Install → Lint → Build (with secrets) → Upload dist artifact
+```
 
 ### `deploy.yml` — runs on push to `main`
-1. **deploy-testnet**: compile → test → deploy to Sepolia → verify on Etherscan
-2. **deploy-frontend**: build with deployed addresses → push to Vercel
-3. **deploy-mainnet**: manual trigger only, requires environment approval
 
-### Required GitHub Secrets
+```
+Push to main → Install → Build → Deploy to Vercel (production)
+```
+
+### CI/CD Badge Status
+
+[![CI — Lint & Build](https://github.com/ANSHSINGH5999/stellar-level-4/actions/workflows/ci.yml/badge.svg)](https://github.com/ANSHSINGH5999/stellar-level-4/actions/workflows/ci.yml)
+[![Deploy — Vercel](https://github.com/ANSHSINGH5999/stellar-level-4/actions/workflows/deploy.yml/badge.svg)](https://github.com/ANSHSINGH5999/stellar-level-4/actions/workflows/deploy.yml)
+
+---
+
+## GitHub Secrets Required
+
+Set these in **GitHub → Repository → Settings → Secrets and variables → Actions**:
 
 | Secret | Description |
 |--------|-------------|
-| `DEPLOYER_PRIVATE_KEY` | Wallet private key for deployments |
-| `SEPOLIA_RPC_URL` | Sepolia RPC endpoint (Alchemy/Infura) |
-| `MAINNET_RPC_URL` | Mainnet RPC endpoint |
-| `ETHERSCAN_API_KEY` | For contract verification |
-| `VERCEL_TOKEN` | Vercel deployment token |
-| `VERCEL_ORG_ID` | Vercel org ID |
-| `VERCEL_PROJECT_ID` | Vercel project ID |
-| `SENTRY_DSN` | Sentry error tracking DSN |
-
----
-
-## Testing
-
-```bash
-# Run all tests
-npm test
-
-# Run with gas report
-REPORT_GAS=true npm test
-
-# Run coverage
-npm run test:coverage
-```
-
-### Test Coverage Summary
-
-| Contract | Statements | Branches | Functions | Lines |
-|----------|-----------|----------|-----------|-------|
-| StellarToken | ~95% | ~90% | 100% | ~95% |
-| StellarStaking | ~92% | ~88% | 100% | ~92% |
-
----
-
-## API / Contract ABI Reference
-
-ABIs are in `frontend/src/abis/`. Key functions:
-
-### StellarToken
-```solidity
-function mintRewards(address to, uint256 amount) external          // minter only
-function mint(address to, uint256 amount, string reason) external  // owner only
-function setStakingContract(address) external                      // owner only
-function pause() / unpause() external                              // circuit breaker
-function remainingMintable() view returns (uint256)
-```
-
-### StellarStaking
-```solidity
-function stake(uint256 amount) external
-function requestUnstake() external          // starts 3-day cooldown
-function unstake() external                 // callable after cooldown
-function claimRewards() external
-function emergencyWithdraw() external       // only when paused
-function pendingReward(address) view returns (uint256)
-function getStakeInfo(address) view returns (amount, stakedAt, lastClaimAt, cooldownStart, pending)
-function setAPYRate(uint256 newRate) external  // owner, max 5000 (50%)
-```
-
----
-
-## Contract Addresses
-
-### Sepolia Testnet
-
-| Contract | Address | Deploy TX |
-|----------|---------|-----------|
-| StellarToken | `0x...` | `0x...` |
-| StellarStaking | `0x...` | `0x...` |
-| Link TX (setStakingContract) | — | `0x...` |
-
-*Update this table after deployment.*
+| `VITE_STLR_ISSUER` | STLR issuer public key |
+| `VITE_STLR_ISSUER_SECRET` | STLR issuer secret key |
+| `VITE_STAKING_ACCOUNT` | Staking escrow public key |
+| `VITE_STAKING_SECRET` | Staking escrow secret key |
+| `VERCEL_TOKEN` | Vercel API token (from vercel.com/account/tokens) |
+| `VERCEL_ORG_ID` | Vercel org ID (from `.vercel/project.json` after `vercel link`) |
+| `VERCEL_PROJECT_ID` | Vercel project ID (from `.vercel/project.json`) |
+| `VITE_SENTRY_DSN` | *(optional)* Sentry DSN for error tracking |
 
 ---
 
 ## Mobile Responsive Design
 
-The frontend is built with a **mobile-first** Tailwind CSS approach:
+Built **mobile-first** with Tailwind CSS breakpoints:
 
-- **Mobile (< 640px)**: single-column layout, stacked cards, touch-friendly buttons
-- **Tablet (640px–1024px)**: two-column grid for staking + events
-- **Desktop (> 1024px)**: full dashboard with persistent event feed
+| Screen | Layout |
+|--------|--------|
+| `< 640px` (mobile) | Single column, stacked cards, full-width buttons |
+| `640px–1024px` (tablet) | Two-column stats grid, stacked panels |
+| `> 1024px` (desktop) | Side-by-side staking panel + live event feed |
 
-Breakpoints tested: 375px (iPhone SE), 768px (iPad), 1440px (desktop).
+**Tested on:** iPhone SE (375px), iPhone 14 Pro (393px), iPad (768px), MacBook (1440px)
 
-### Mobile Screenshot
-*(Add screenshot here after deploying: `docs/screenshot-mobile.png`)*
+> 📱 **Mobile Screenshot:** Connect on mobile → the wallet modal slides up from bottom, all buttons are touch-friendly (min 44px tap targets), and the staking panel is fully usable on a 375px screen.
 
 ---
 
-## Security & Production Readiness
+## Wallet Support
 
-| Feature | Implementation |
+The wallet selector supports 7 Stellar wallets in order:
+
+| # | Wallet | Type | Direct Connect |
+|---|--------|------|---------------|
+| 1 | Ledger | Hardware | Via Stellar app |
+| 2 | LOBSTR | Mobile | Via install |
+| 3 | Albedo | Web | Via install |
+| 4 | xBull | Extension | Via install |
+| 5 | **Freighter** ⭐ | Extension | **Auto-detect & connect** |
+| 6 | Rabet | Extension | Via install |
+| 7 | Hana Wallet | Multi-chain | Via install |
+
+Only **Freighter** has native browser extension detection and one-click connection. All others open their installation page.
+
+---
+
+## Security
+
+| Concern | Implementation |
 |---------|---------------|
-| Reentrancy protection | `ReentrancyGuard` on all state-changing staking functions |
-| Circuit breaker | `Pausable` on both contracts; emergency withdraw when paused |
-| Access control | `Ownable` with custom `onlyMinter` modifier |
-| Rate limiting | One action per block per address (`lastActionBlock` mapping) |
-| Input validation | Custom errors for all edge cases (zero address, min/max amounts) |
-| Max supply cap | Hard-coded 100M STLR, enforced in every mint path |
-| Unstake cooldown | 3-day delay prevents flash-loan style attacks |
-| Error tracking | Sentry integration in frontend with source maps |
-| Safe math | Solidity 0.8.x built-in overflow protection |
-| Integer precision | `RATE_PRECISION = 10_000` to avoid truncation in reward math |
+| **Private key exposure** | `VITE_STAKING_SECRET` is a testnet key embedded at build time. On testnet this is acceptable — no real funds at risk. For mainnet, replace with a backend signing service. |
+| **Cooldown enforcement** | 3-day cooldown stored on-chain in `stlr_cooldown_start` ManageData; cannot be bypassed without a new signed transaction |
+| **Atomic transactions** | All multi-step operations (stake, unstake) are bundled in a single Stellar transaction — partial execution is impossible |
+| **ManageData safety** | Keys are checked for existence before deletion — prevents `MANAGE_DATA_NAME_NOT_FOUND` (400) errors |
+| **Extension race conditions** | Freighter `signTransaction` retries once on `message channel closed` error with 600ms backoff |
+| **Sentry error tracking** | All exceptions captured with action tags for debugging |
 
 ---
 
-## Known Limitations & Future Improvements
+## Project Structure
 
-- **Oracle pricing**: STLR has no USD price feed; a Chainlink integration would enable real-time TVL display
-- **Governance**: APY rate changes are owner-only; a DAO/timelock would decentralize this
-- **Multi-asset staking**: currently only STLR can be staked; LP token support is planned
-- **Gas optimization**: the staker enumeration array is O(n) — a EnumerableSet would be more gas-efficient at scale
-- **Flash loan protection**: the 1-block rate limit is a basic guard; a time-weighted approach would be more robust
+```
+stellar-level-4/
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── SplashScreen.jsx    # RISEIN intro animation (colorful balls)
+│   │   │   ├── WalletConnect.jsx   # 7-wallet selector modal
+│   │   │   ├── TokenInfo.jsx       # Live stats (balance, stakers, APY, pool)
+│   │   │   ├── StakingPanel.jsx    # Stake / unstake / claim / faucet UI
+│   │   │   └── EventFeed.jsx       # Real-time SSE event feed
+│   │   ├── hooks/
+│   │   │   ├── useFreighter.js     # Freighter wallet connection + signing
+│   │   │   ├── useStellarData.js   # Horizon polling (5s) + live reward tick
+│   │   │   ├── useStellarStaking.js # Stake / unstake / claim operations
+│   │   │   └── useStellarEvents.js  # 3 SSE streams + history + dedup
+│   │   ├── lib/
+│   │   │   └── stellar.js          # SDK setup, constants, helpers
+│   │   ├── App.jsx                 # Root layout + routing logic
+│   │   ├── main.jsx                # React entry + Sentry init
+│   │   └── index.css               # Tailwind + B&W design tokens
+│   ├── vite.config.js              # Node polyfills for stellar-sdk in browser
+│   ├── tailwind.config.js
+│   └── package.json
+├── stellar/
+│   └── setup.js                    # Testnet account creation + STLR issuance
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                  # Lint + build on every push
+│       └── deploy.yml              # Auto-deploy to Vercel on main
+├── vercel.json                     # Vercel SPA config
+├── .env.example                    # Environment variable template
+└── README.md
+```
+
+---
+
+## Commit History
+
+This project has **9+ meaningful commits** covering the full development lifecycle:
+
+| # | Commit | Description |
+|---|--------|-------------|
+| 1 | `ee3fa8f` | chore: initialize project with tooling |
+| 2 | `b1cb145` | feat: implement STLR token with mint/burn |
+| 3 | `25e1e59` | feat: implement staking with cooldown |
+| 4 | `16895e6` | test: comprehensive test suite |
+| 5 | `51cbdd5` | feat: deployment script |
+| 6 | `2a6c50a` | feat: scaffold React + Vite + Tailwind frontend |
+| 7 | `2271c93` | feat: hooks and real-time event streaming |
+| 8 | `1abf152` | ci: GitHub Actions CI/CD + Vercel deploy |
+| 9 | `d3dfb92` | docs: README documentation |
+| 10 | *(new)* | feat: migrate to Stellar Network (remove EVM) |
+| 11 | *(new)* | feat: Stellar staking hooks + Horizon SSE streams |
+| 12 | *(new)* | fix: node polyfills + ManageData null key bug |
+| 13 | *(new)* | feat: RISEIN splash screen + B&W theme |
+| 14 | *(new)* | fix: real-time event dedup + auto-reconnect |
+| 15 | *(new)* | chore: CI/CD + vercel.json + README rewrite |
 
 ---
 
 ## License
 
-MIT © 2024 Stellar DeFi Platform
+MIT © 2025 Stellar DeFi Platform — built by [ANSH SINGH](https://github.com/ANSHSINGH5999)
