@@ -58,26 +58,44 @@ export function useFreighter() {
     async function init() {
       const found = await waitForFreighter(3000);
       if (cancelled) return;
+
       if (found) {
         setInstalled(true);
-        // Only auto-reconnect if NOT in manual/view-only mode
-        if (!localStorage.getItem(MANUAL_KEY)) {
-          try {
-            const allowed = await isAllowed();
-            const isOk = unwrap(allowed, "isAllowed") ?? allowed ?? false;
-            if (isOk && !cancelled) {
+
+        try {
+          // Check if already allowed
+          const allowedRes = await isAllowed();
+          const alreadyAllowed = unwrap(allowedRes, "isAllowed") ?? allowedRes ?? false;
+
+          if (alreadyAllowed) {
+            // Already has permission — grab address and upgrade from view-only
+            const addrRes = await getAddress();
+            const addr    = unwrap(addrRes, "address") ?? addrRes;
+            const netRes  = await getNetwork();
+            const net     = unwrap(netRes, "network") ?? netRes ?? "TESTNET";
+            if (!cancelled && addr) {
+              localStorage.removeItem(MANUAL_KEY);
+              setAccount(addr);
+              setNetwork(net);
+              setIsViewOnly(false);
+            }
+          } else {
+            // Inside Freighter browser but not yet allowed → request access automatically
+            const result = await requestAccess();
+            if (!cancelled && !result?.error) {
               const addrRes = await getAddress();
               const addr    = unwrap(addrRes, "address") ?? addrRes;
               const netRes  = await getNetwork();
-              const net     = unwrap(netRes, "network") ?? netRes;
-              if (!cancelled && addr) {
+              const net     = unwrap(netRes, "network") ?? netRes ?? "TESTNET";
+              if (addr) {
+                localStorage.removeItem(MANUAL_KEY);
                 setAccount(addr);
-                setNetwork(net || "TESTNET");
+                setNetwork(net);
                 setIsViewOnly(false);
               }
             }
-          } catch {}
-        }
+          }
+        } catch {}
       }
     }
     init();
@@ -89,16 +107,27 @@ export function useFreighter() {
     setIsConnecting(true);
     setError(null);
     try {
+      // Wait for Freighter (handles mobile late injection)
       const found = await waitForFreighter(8000);
       if (!found) {
-        setError("Freighter not found. Open this app inside Freighter's browser, or use address input below.");
+        setError("Freighter not found. Open this app inside Freighter's browser, or paste your address below.");
         return false;
       }
       setInstalled(true);
 
-      const result = await requestAccess();
-      if (result?.error) { setError(result.error); return false; }
+      // Check if already allowed — only call requestAccess if not yet allowed
+      const allowedRes    = await isAllowed();
+      const alreadyAllowed = unwrap(allowedRes, "isAllowed") ?? allowedRes ?? false;
 
+      if (!alreadyAllowed) {
+        const result = await requestAccess();
+        if (result?.error) {
+          setError(result.error);
+          return false;
+        }
+      }
+
+      // Get address + network
       const addrRes = await getAddress();
       const addr    = unwrap(addrRes, "address") ?? addrRes;
       if (!addr || typeof addr !== "string") {
