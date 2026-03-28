@@ -15,16 +15,16 @@ export const server = new StellarSdk.Horizon.Server(HORIZON_URL, {
 // ── STLR Token ─────────────────────────────────────────────────────────────
 // Testnet defaults — safe to embed (testnet only, no real value)
 export const STLR_ISSUER =
-  import.meta.env.VITE_STLR_ISSUER ||
+  (import.meta.env.VITE_STLR_ISSUER || "").trim() ||
   "GCTWILTRMEWG4ZNWK6GTT5XRBR7BXZZ2PSRQ5PMDKTFDTZSPKKNLBSJO";
 
 // ── Staking Escrow ─────────────────────────────────────────────────────────
 export const STAKING_ACCOUNT =
-  import.meta.env.VITE_STAKING_ACCOUNT ||
+  (import.meta.env.VITE_STAKING_ACCOUNT || "").trim() ||
   "GDBLLO3W3ZSOWJP2PG6R3MLKUUXN5M6KPVOBADG5WRPIVJFLDPRFGJXF";
 
 export const STAKING_SECRET =
-  import.meta.env.VITE_STAKING_SECRET ||
+  (import.meta.env.VITE_STAKING_SECRET || "").trim() ||
   "SAUU3BRXD3TTGVYTMES4E5E6RJJ6Y2CXRPWEUYG3LHCXEMEBTLRCVGTA";
 
 /** Always returns a proper Asset instance. */
