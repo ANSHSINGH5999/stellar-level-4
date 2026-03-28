@@ -6,13 +6,15 @@
 [![Stellar Network](https://img.shields.io/badge/Network-Stellar%20Testnet-blueviolet)](https://stellar.org)
 [![Freighter Wallet](https://img.shields.io/badge/Wallet-Freighter-6366f1)](https://freighter.app)
 [![Live Demo](https://img.shields.io/badge/🚀%20Live-Demo-brightgreen)](https://stellar-level-4.vercel.app)
+[![Demo Video](https://img.shields.io/badge/🎥%20Demo-Video-red)](https://drive.google.com/drive/folders/1RiwaWm59ajCNQhrNBdu_BnWE4CEQ-1Ck)
 
 ---
 
 > **A production-ready DeFi staking platform built entirely on the Stellar Network.**
 > Stake STLR tokens, earn 12% APY in on-chain rewards, and watch real-time blockchain events — all without EVM, Solidity, or MetaMask.
 
-**🚀 Live:** [https://stellar-level-4.vercel.app](https://stellar-level-4.vercel.app)
+**🚀 Live Demo:** [https://stellar-level-4.vercel.app](https://stellar-level-4.vercel.app)
+**🎥 Demo Video:** [Watch on Google Drive](https://drive.google.com/drive/folders/1RiwaWm59ajCNQhrNBdu_BnWE4CEQ-1Ck)
 
 ---
 
