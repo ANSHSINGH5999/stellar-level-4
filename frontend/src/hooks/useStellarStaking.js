@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import * as StellarSdk from "@stellar/stellar-sdk";
 import {
-  server, STLR_ASSET, STAKING_ACCOUNT, NETWORK_PASSPHRASE,
+  server, getSTLRAsset, STAKING_ACCOUNT, NETWORK_PASSPHRASE,
   BASE_FEE, parseHorizonError,
 } from "../lib/stellar.js";
 import * as Sentry from "@sentry/react";
@@ -55,7 +55,7 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
   const establishTrustline = useCallback(async () => {
     return buildSign([
       StellarSdk.Operation.changeTrust({
-        asset: STLR_ASSET,
+        asset: getSTLRAsset(),
         limit: "900000000",
       }),
     ]);
@@ -77,7 +77,7 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
         .addOperation(
           StellarSdk.Operation.payment({
             destination: account,
-            asset: STLR_ASSET,
+            asset: getSTLRAsset(),
             amount: "10000",
           })
         )
@@ -96,7 +96,7 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
   const stake = useCallback(
     async (amount) => {
       if (!STAKING_ACCOUNT) throw new Error("Staking account not configured");
-      if (!STLR_ASSET) throw new Error("STLR asset not configured");
+      const stlrAsset = getSTLRAsset();
 
       const now = Math.floor(Date.now() / 1000).toString();
 
@@ -108,7 +108,7 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
         // Send STLR to staking escrow
         StellarSdk.Operation.payment({
           destination: STAKING_ACCOUNT,
-          asset: STLR_ASSET,
+          asset: stlrAsset,
           amount: amount.toString(),
         }),
         // Record stake metadata
@@ -158,12 +158,14 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
       try {
         const stakingKP = StellarSdk.Keypair.fromSecret(secret);
 
+        const stlrAsset = getSTLRAsset();
+
         // Send tokens back from staking escrow
         const stakingAcct = await server.loadAccount(STAKING_ACCOUNT);
         const payOps = [
           StellarSdk.Operation.payment({
             destination: account,
-            asset: STLR_ASSET,
+            asset: stlrAsset,
             amount: parseFloat(stakedAmount).toFixed(7),
             source: STAKING_ACCOUNT,
           }),
@@ -174,7 +176,7 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
           payOps.push(
             StellarSdk.Operation.payment({
               destination: account,
-              asset: STLR_ASSET,
+              asset: stlrAsset,
               amount: Math.min(rewardNum, 999999).toFixed(7),
               source: STAKING_ACCOUNT,
             })
@@ -229,7 +231,7 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
           .addOperation(
             StellarSdk.Operation.payment({
               destination: account,
-              asset: STLR_ASSET,
+              asset: getSTLRAsset(),
               amount: rewardStr,
             })
           )

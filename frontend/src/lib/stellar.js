@@ -14,9 +14,15 @@ export const server = new StellarSdk.Horizon.Server(HORIZON_URL, {
 
 // ── STLR Token ─────────────────────────────────────────────────────────────
 export const STLR_ISSUER = import.meta.env.VITE_STLR_ISSUER || "";
-export const STLR_ASSET = STLR_ISSUER
-  ? new StellarSdk.Asset("STLR", STLR_ISSUER)
-  : null;
+
+/** Always returns a proper Asset instance, throws a clear error if issuer is missing. */
+export function getSTLRAsset() {
+  if (!STLR_ISSUER) throw new Error("STLR token not configured — run npm run setup first");
+  return new StellarSdk.Asset("STLR", STLR_ISSUER);
+}
+
+// Backwards-compat alias for code that reads STLR_ASSET directly
+export const STLR_ASSET = STLR_ISSUER ? new StellarSdk.Asset("STLR", STLR_ISSUER) : null;
 
 // ── Staking Escrow ─────────────────────────────────────────────────────────
 export const STAKING_ACCOUNT = import.meta.env.VITE_STAKING_ACCOUNT || "";
