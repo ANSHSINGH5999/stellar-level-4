@@ -10,17 +10,15 @@ const isMobile = () =>
     typeof navigator !== "undefined" ? navigator.userAgent : ""
   );
 
-// ── Wallet icon ──────────────────────────────────────────────────────────────
 const FreighterIcon = () => (
-  <svg viewBox="0 0 40 40" fill="none" className="w-8 h-8 flex-shrink-0">
+  <svg viewBox="0 0 40 40" fill="none" className="w-5 h-5 flex-shrink-0">
     <rect width="40" height="40" rx="10" fill="#6366F1" />
     <path d="M10 20 L20 10 L30 20 L20 30 Z" fill="white" opacity="0.9" />
     <circle cx="20" cy="20" r="4" fill="#6366F1" />
   </svg>
 );
 
-// ── Copy URL button ──────────────────────────────────────────────────────────
-function CopyButton({ text, label = "Copy" }) {
+function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -33,52 +31,42 @@ function CopyButton({ text, label = "Copy" }) {
         copied ? "bg-green-700/50 text-green-300" : "bg-indigo-700/50 text-indigo-300 hover:bg-indigo-600/50"
       }`}
     >
-      {copied ? "Copied ✓" : label}
+      {copied ? "Copied ✓" : "Copy"}
     </button>
   );
 }
 
-// ── Address input (view-only) ────────────────────────────────────────────────
 function AddressInput({ onConnect }) {
   const [addr, setAddr] = useState("");
-  const [err, setErr]   = useState("");
   const valid = isValidStellarAddress(addr);
-
-  const submit = () => {
-    if (!valid) { setErr("Invalid address — must start with G, 56 characters."); return; }
-    onConnect(addr.trim());
-  };
 
   return (
     <div className="space-y-3">
-      <div>
-        <label className="text-xs text-gray-400 font-medium block mb-1.5">
-          Paste your Stellar wallet address
-        </label>
-        <input
-          type="text"
-          value={addr}
-          onChange={(e) => { setAddr(e.target.value); setErr(""); }}
-          placeholder="GABC…XYZ  (starts with G, 56 chars)"
-          className="w-full bg-stellar-800/60 border border-stellar-700/40 rounded-xl px-3 py-2.5 text-sm text-gray-100 font-mono placeholder-gray-600 focus:outline-none focus:border-indigo-500/60"
-          autoComplete="off"
-          spellCheck={false}
-        />
-        {err  && <p className="text-xs text-red-400 mt-1">{err}</p>}
-        {addr && !err && (
-          <p className={`text-xs mt-1 ${valid ? "text-green-400" : "text-red-400"}`}>
-            {valid ? "✓ Valid Stellar address" : "✗ Invalid — check and try again"}
-          </p>
-        )}
-      </div>
+      <label className="text-xs text-gray-400 font-medium block">
+        Paste your Stellar wallet address
+      </label>
+      <input
+        type="text"
+        value={addr}
+        onChange={(e) => setAddr(e.target.value)}
+        placeholder="GABC…XYZ  (starts with G, 56 chars)"
+        className="w-full bg-stellar-800/60 border border-stellar-700/40 rounded-xl px-3 py-2.5 text-sm text-gray-100 font-mono placeholder-gray-600 focus:outline-none focus:border-indigo-500/60"
+        autoComplete="off"
+        spellCheck={false}
+      />
+      {addr && (
+        <p className={`text-xs ${valid ? "text-green-400" : "text-red-400"}`}>
+          {valid ? "✓ Valid Stellar address" : "✗ Invalid — must start with G, 56 characters"}
+        </p>
+      )}
       <div className="flex items-start gap-2 bg-amber-900/20 border border-amber-700/30 rounded-xl px-3 py-2">
         <Eye size={12} className="text-amber-400 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-amber-300">
-          <strong>View-only</strong> — see real balances &amp; rewards. Staking needs Freighter.
+          <strong>View-only</strong> — see balances &amp; rewards. Staking needs Freighter.
         </p>
       </div>
       <button
-        onClick={submit}
+        onClick={() => valid && onConnect(addr.trim())}
         disabled={!valid}
         className="w-full btn-primary py-2.5 disabled:opacity-40 disabled:cursor-not-allowed"
       >
@@ -88,7 +76,6 @@ function AddressInput({ onConnect }) {
   );
 }
 
-// ── Mobile Freighter guide ───────────────────────────────────────────────────
 function FreighterMobileGuide() {
   const appUrl    = window.location.href;
   const isAndroid = /Android/i.test(navigator.userAgent);
@@ -100,13 +87,13 @@ function FreighterMobileGuide() {
     <div className="space-y-3">
       <div className="bg-amber-900/20 border border-amber-700/30 rounded-xl px-3 py-2.5">
         <p className="text-xs text-amber-300">
-          ⚠️ <strong>Do NOT use Chrome/Safari</strong> — only works inside Freighter's browser tab
+          ⚠️ <strong>Use Freighter's browser tab</strong> — does not work in Chrome/Safari
         </p>
       </div>
       {[
         {
-          n: 1, title: "Install Freighter Mobile",
-          body: "Download the official Freighter wallet",
+          n: 1, title: "Install Freighter",
+          body: "Download the official Freighter wallet app",
           action: (
             <a href={storeUrl} target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg transition-colors">
@@ -116,12 +103,11 @@ function FreighterMobileGuide() {
         },
         {
           n: 2, title: 'Open Freighter → tap "Browser" 🌐',
-          body: "Tap the globe icon in the bottom navigation",
-          action: null,
+          body: "Use the globe icon in the bottom navigation bar",
         },
         {
-          n: 3, title: "Paste this URL and open",
-          body: "Copy the link below, paste in Freighter's address bar",
+          n: 3, title: "Paste this URL",
+          body: "Copy and open this link in Freighter's browser",
           action: (
             <div className="mt-2 bg-stellar-900/60 border border-stellar-700/40 rounded-xl px-3 py-2 flex items-center gap-2">
               <span className="font-mono text-xs text-indigo-300 flex-1 truncate">{appUrl}</span>
@@ -130,9 +116,8 @@ function FreighterMobileGuide() {
           ),
         },
         {
-          n: 4, title: 'Tap "Connect Wallet" — approve popup',
+          n: 4, title: "Tap Connect — approve popup",
           body: "Freighter will ask for permission — tap Allow",
-          action: null,
         },
       ].map(s => (
         <div key={s.n} className="flex gap-3 bg-stellar-800/20 border border-stellar-800/40 rounded-2xl px-4 py-3">
@@ -150,22 +135,21 @@ function FreighterMobileGuide() {
 
 const NETWORK_BADGE = { PUBLIC: "badge-green", TESTNET: "badge-yellow", FUTURENET: "badge-blue" };
 
-// ── Main component ───────────────────────────────────────────────────────────
 export function WalletConnect({
   account, network, networkInfo,
   isConnecting, isFreighterInstalled,
   isViewOnly, walletType, error,
   onConnect, onConnectManual, onDisconnect,
 }) {
-  const [showModal, setShowModal]   = useState(false);
-  const [tab, setTab]               = useState("freighter");
-  const [connecting, setConnecting] = useState(null);
+  const [showFallback, setShowFallback] = useState(false);
+  const [fallbackTab, setFallbackTab]   = useState("guide"); // 'guide' | 'address'
+  const [connecting, setConnecting]     = useState(false);
   const mobile = useMemo(() => isMobile(), []);
 
-  const shortAddr  = account ? `${account.slice(0, 6)}…${account.slice(-4)}` : null;
+  const shortAddr   = account ? `${account.slice(0, 6)}…${account.slice(-4)}` : null;
   const walletLabel = walletType === "manual" ? "View Only" : "Freighter";
 
-  // ── Connected ──────────────────────────────────────────────────────────────
+  // ── Connected state ────────────────────────────────────────────────────────
   if (account) {
     return (
       <div className="flex items-center gap-2 flex-wrap">
@@ -192,126 +176,165 @@ export function WalletConnect({
     );
   }
 
-  // ── Trigger helper ─────────────────────────────────────────────────────────
-  const tryConnect = async (type, fn) => {
-    setConnecting(type);
-    const ok = await fn();
-    setConnecting(null);
-    if (ok) setShowModal(false);
+  // ── One-tap connect: tap button → directly call Freighter ─────────────────
+  const handleConnect = async () => {
+    setConnecting(true);
+    const ok = await onConnect();
+    setConnecting(false);
+    if (!ok) {
+      // Failed → open fallback modal so user can see the error + alternatives
+      setShowFallback(true);
+      setFallbackTab(mobile && !isFreighterInstalled ? "guide" : "address");
+    }
   };
 
-  // ── Disconnected ───────────────────────────────────────────────────────────
+  const busy = isConnecting || connecting;
+
   return (
     <>
+      {/* ── Single connect button — NO modal, direct Freighter call ── */}
       <button
-        onClick={() => setShowModal(true)}
-        disabled={isConnecting || !!connecting}
+        onClick={handleConnect}
+        disabled={busy}
         className="btn-primary flex items-center gap-2"
       >
-        {isConnecting || connecting
+        {busy
           ? <><Loader2 size={15} className="animate-spin" /> Connecting…</>
           : <><Wallet size={15} /> Connect Wallet</>
         }
       </button>
 
-      {showModal && (
+      {/* Error hint under button (outside fallback modal) */}
+      {error && !showFallback && (
+        <p className="text-xs text-red-400 mt-1 max-w-xs">{error}</p>
+      )}
+
+      {/* ── Fallback sheet — only opens when connect() fails ── */}
+      {showFallback && (
         <div
           className={`fixed inset-0 z-50 flex ${mobile ? "items-end" : "items-center"} justify-center p-4`}
           style={{ background: "rgba(0,0,0,0.82)", backdropFilter: "blur(6px)" }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowFallback(false); }}
         >
           <div className={`w-full max-w-md bg-stellar-900 border border-stellar-700/50 shadow-2xl overflow-hidden ${mobile ? "rounded-t-3xl" : "rounded-2xl"}`}>
 
-            {mobile && <div className="flex justify-center pt-3 pb-1"><div className="w-10 h-1 rounded-full bg-stellar-700" /></div>}
+            {mobile && (
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-stellar-700" />
+              </div>
+            )}
 
-            {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-stellar-800/50">
-              <h2 className="font-bold text-gray-100 text-base">Connect Wallet</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-500 hover:text-gray-300 p-1.5 rounded-xl hover:bg-stellar-800/50 transition-colors">
+              <h2 className="font-bold text-gray-100 text-base">Connection Help</h2>
+              <button
+                onClick={() => setShowFallback(false)}
+                className="text-gray-500 hover:text-gray-300 p-1.5 rounded-xl hover:bg-stellar-800/50 transition-colors"
+              >
                 <X size={18} />
               </button>
             </div>
 
+            {/* Error banner */}
+            {error && (
+              <div className="mx-5 mt-4 flex items-start gap-2 text-red-400 bg-red-900/20 border border-red-700/30 rounded-xl px-3 py-2.5 text-sm">
+                <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
             {/* Tabs */}
-            <div className="flex border-b border-stellar-800/50">
-              {[
-                { id: "freighter", icon: <Wallet size={12} />,    label: "Freighter" },
-                { id: "address",   icon: <KeyRound size={12} />,  label: "Paste Address" },
-              ].map(t => (
+            <div className="flex border-b border-stellar-800/50 mt-3">
+              {mobile && !isFreighterInstalled && (
                 <button
-                  key={t.id}
-                  onClick={() => setTab(t.id)}
+                  onClick={() => setFallbackTab("guide")}
                   className={`flex-1 py-2.5 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                    tab === t.id
-                      ? t.id === "address"
-                        ? "text-amber-400 border-b-2 border-amber-500"
-                        : "text-indigo-400 border-b-2 border-indigo-500"
+                    fallbackTab === "guide"
+                      ? "text-indigo-400 border-b-2 border-indigo-500"
                       : "text-gray-500 hover:text-gray-300"
                   }`}
                 >
-                  {t.icon}
-                  {t.label}
+                  <Wallet size={12} /> How to Use Freighter
                 </button>
-              ))}
+              )}
+              <button
+                onClick={() => setFallbackTab("address")}
+                className={`flex-1 py-2.5 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                  fallbackTab === "address"
+                    ? "text-amber-400 border-b-2 border-amber-500"
+                    : "text-gray-500 hover:text-gray-300"
+                }`}
+              >
+                <KeyRound size={12} /> Paste Address
+              </button>
+              {(!mobile || isFreighterInstalled) && (
+                <button
+                  onClick={() => setFallbackTab("retry")}
+                  className={`flex-1 py-2.5 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                    fallbackTab === "retry"
+                      ? "text-indigo-400 border-b-2 border-indigo-500"
+                      : "text-gray-500 hover:text-gray-300"
+                  }`}
+                >
+                  <Wallet size={12} /> Freighter
+                </button>
+              )}
             </div>
 
-            <div className="p-5 max-h-[70vh] overflow-y-auto">
+            <div className="p-5 max-h-[65vh] overflow-y-auto">
 
-              {/* Error */}
-              {error && tab !== "address" && (
-                <div className="mb-4 flex items-start gap-2 text-red-400 bg-red-900/20 border border-red-700/30 rounded-xl px-3 py-2.5 text-sm">
-                  <AlertCircle size={14} className="mt-0.5 flex-shrink-0" /><span>{error}</span>
-                </div>
+              {/* Mobile guide */}
+              {fallbackTab === "guide" && <FreighterMobileGuide />}
+
+              {/* Paste address */}
+              {fallbackTab === "address" && (
+                <AddressInput
+                  onConnect={(addr) => {
+                    onConnectManual(addr);
+                    setShowFallback(false);
+                  }}
+                />
               )}
 
-              {/* ── Freighter tab ── */}
-              {tab === "freighter" && (
+              {/* Retry Freighter */}
+              {fallbackTab === "retry" && (
                 <div className="space-y-3">
-                  {mobile && !isFreighterInstalled
-                    ? <FreighterMobileGuide />
-                    : null
-                  }
-                  {(!mobile || isFreighterInstalled) && (
-                    <>
-                      {!isFreighterInstalled && (
-                        <div className="flex items-start gap-2 bg-indigo-900/20 border border-indigo-700/30 rounded-xl px-3 py-2.5 mb-3">
-                          <AlertCircle size={13} className="text-indigo-400 flex-shrink-0 mt-0.5" />
-                          <p className="text-xs text-indigo-300">
-                            Freighter extension not detected.{" "}
-                            <a href="https://freighter.app" target="_blank" rel="noopener noreferrer" className="underline text-indigo-200">Install it here</a>
-                            {" "}then refresh.
-                          </p>
-                        </div>
-                      )}
-                      {isFreighterInstalled && (
-                        <div className="flex items-center gap-2 bg-green-900/20 border border-green-700/30 rounded-xl px-3 py-2 mb-3">
-                          <CheckCircle2 size={13} className="text-green-400" />
-                          <p className="text-xs text-green-300">Freighter detected ✓</p>
-                        </div>
-                      )}
-                      <button
-                        onClick={() => tryConnect("freighter", onConnect)}
-                        disabled={!!connecting}
-                        className="w-full btn-primary py-3 flex items-center justify-center gap-2"
-                      >
-                        {connecting === "freighter"
-                          ? <><Loader2 size={15} className="animate-spin" /> Connecting…</>
-                          : <><Wallet size={15} /> Connect with Freighter</>
-                        }
-                      </button>
-                      {mobile && (
-                        <p className="text-xs text-center text-gray-500">
-                          Not working? Use the <strong className="text-gray-400">Paste Address</strong> tab as fallback.
+                  {isFreighterInstalled
+                    ? (
+                      <div className="flex items-center gap-2 bg-green-900/20 border border-green-700/30 rounded-xl px-3 py-2">
+                        <CheckCircle2 size={13} className="text-green-400" />
+                        <p className="text-xs text-green-300">Freighter detected ✓</p>
+                      </div>
+                    ) : (
+                      <div className="flex items-start gap-2 bg-indigo-900/20 border border-indigo-700/30 rounded-xl px-3 py-2.5">
+                        <AlertCircle size={13} className="text-indigo-400 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-indigo-300">
+                          Freighter not detected.{" "}
+                          <a href="https://freighter.app" target="_blank" rel="noopener noreferrer" className="underline text-indigo-200">
+                            Install it here
+                          </a>{" "}then refresh.
                         </p>
-                      )}
-                    </>
-                  )}
+                      </div>
+                    )
+                  }
+                  <p className="text-xs text-gray-500">
+                    If Freighter is installed but not responding, force-close it and reopen, then try again.
+                  </p>
+                  <button
+                    onClick={async () => {
+                      setConnecting(true);
+                      const ok = await onConnect();
+                      setConnecting(false);
+                      if (ok) setShowFallback(false);
+                    }}
+                    disabled={busy}
+                    className="w-full btn-primary py-3 flex items-center justify-center gap-2"
+                  >
+                    {busy
+                      ? <><Loader2 size={15} className="animate-spin" /> Connecting…</>
+                      : <><Wallet size={15} /> Retry Freighter</>
+                    }
+                  </button>
                 </div>
-              )}
-
-              {/* ── Address tab ── */}
-              {tab === "address" && (
-                <AddressInput onConnect={(addr) => { onConnectManual(addr); setShowModal(false); }} />
               )}
 
             </div>
