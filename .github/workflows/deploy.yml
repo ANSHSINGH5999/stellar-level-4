@@ -10,11 +10,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ── Build & Deploy to Vercel ──────────────────────────────────────────────
   deploy:
-    name: Deploy to Vercel
+    name: Build & Deploy to Vercel
     runs-on: ubuntu-latest
     environment: production
+
     steps:
       - uses: actions/checkout@v4
 
@@ -43,11 +43,11 @@ jobs:
           VITE_STAKING_SECRET: ${{ secrets.VITE_STAKING_SECRET }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
 
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
       - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: ./
-          vercel-args: "--prod"
+        run: vercel --prod --token ${{ secrets.VERCEL_TOKEN }} --yes
+        env:
+          VERCEL_ORG_ID: team_ojo7mfRoSUbMnIHJvDtNbhBj
+          VERCEL_PROJECT_ID: prj_meyuvJlf5ShYpkSs1NhNBO7pgKpj
