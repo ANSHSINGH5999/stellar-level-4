@@ -145,32 +145,123 @@ export function WalletConnect({
     : null;
 
   const handleWalletClick = async (wallet) => {
-    if (wallet.id === "freighter") {
-      if (mobile) {
-        // On mobile Freighter extension doesn't exist — open LOBSTR instead
-        window.open("https://lobstr.co", "_blank", "noopener,noreferrer");
-        return;
-      }
-      if (!isFreighterInstalled) {
-        window.open("https://freighter.app", "_blank", "noopener,noreferrer");
-        return;
-      }
-      setConnectingId(wallet.id);
-      setShowModal(false);
-      await onConnect();
-      setConnectingId(null);
+    if (wallet.id !== "freighter") {
+      window.open(wallet.installUrl, "_blank", "noopener,noreferrer");
       return;
     }
-    if (wallet.id === "lobstr" && mobile) {
-      // Deep-link into LOBSTR's in-app browser with this DApp
-      const appUrl = encodeURIComponent(window.location.href);
-      window.location.href = `lobstr://browser?url=${appUrl}`;
-      // Fallback: open lobstr.co after short delay if app not installed
-      setTimeout(() => window.open("https://lobstr.co", "_blank", "noopener,noreferrer"), 1500);
+    if (!isFreighterInstalled) {
+      window.open("https://freighter.app", "_blank", "noopener,noreferrer");
       return;
     }
-    window.open(wallet.installUrl, "_blank", "noopener,noreferrer");
+    setConnectingId(wallet.id);
+    setShowModal(false);
+    await onConnect();
+    setConnectingId(null);
   };
+
+  // ── Mobile: Freighter mobile in-app browser flow ──────────────────────────
+  if (mobile && !account) {
+    const appUrl = window.location.href;
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const storeUrl = isAndroid
+      ? "https://play.google.com/store/apps/details?id=io.freighter"
+      : "https://apps.apple.com/app/freighter/id1669889725";
+
+    return (
+      <>
+        <button
+          onClick={() => setShowModal(true)}
+          disabled={isConnecting}
+          className="btn-primary flex items-center gap-2"
+        >
+          {isConnecting ? (
+            <><Loader2 size={15} className="animate-spin" /> Connecting…</>
+          ) : (
+            <><Smartphone size={15} /> Connect Wallet</>
+          )}
+        </button>
+
+        {showModal && (
+          <div
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+            style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+            onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+          >
+            <div className="w-full max-w-md bg-stellar-900 border border-stellar-700/50 rounded-2xl shadow-2xl overflow-hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-stellar-800/50">
+                <div>
+                  <h2 className="font-bold text-gray-100 text-lg">Connect Wallet</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Use Freighter on mobile</p>
+                </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-gray-500 hover:text-gray-300 p-1.5 rounded-lg hover:bg-stellar-800/50 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                {/* Step 1 */}
+                <div className="flex gap-3">
+                  <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">1</div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-100">Install Freighter Mobile</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Download the official Freighter wallet app</p>
+                    <a
+                      href={storeUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium rounded-lg transition-colors"
+                    >
+                      <ExternalLink size={12} />
+                      {isAndroid ? "Google Play" : "App Store"}
+                    </a>
+                  </div>
+                </div>
+
+                {/* Step 2 */}
+                <div className="flex gap-3">
+                  <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">2</div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-100">Open this app in Freighter</p>
+                    <p className="text-xs text-gray-500 mt-0.5 break-all">
+                      Inside Freighter → tap <strong className="text-gray-300">Browser</strong> → paste:
+                    </p>
+                    <div className="mt-2 bg-stellar-800/60 border border-stellar-700/40 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                      <span className="font-mono text-xs text-indigo-300 truncate">{appUrl}</span>
+                      <button
+                        onClick={() => navigator.clipboard?.writeText(appUrl)}
+                        className="text-gray-500 hover:text-gray-300 flex-shrink-0 text-xs border border-stellar-700/40 rounded px-2 py-0.5"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3 */}
+                <div className="flex gap-3">
+                  <div className="w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">3</div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-100">Tap "Connect Wallet"</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Freighter will prompt you to approve the connection</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="px-5 pb-5">
+                <p className="text-xs text-center text-gray-600">
+                  Freighter is the official Stellar wallet by the Stellar Development Foundation
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
 
   // Connected state
   if (account) {
@@ -240,17 +331,6 @@ export function WalletConnect({
               </button>
             </div>
 
-            {/* Mobile notice */}
-            {mobile && (
-              <div className="mx-4 mt-4 flex items-start gap-2 text-sky-300 bg-sky-900/20 border border-sky-700/30 rounded-xl px-3 py-2.5 text-sm">
-                <Smartphone size={14} className="mt-0.5 flex-shrink-0" />
-                <span>
-                  On mobile, open this app inside the{" "}
-                  <strong className="text-sky-200">LOBSTR</strong> in-app browser — tap LOBSTR below.
-                </span>
-              </div>
-            )}
-
             {/* Error */}
             {error && (
               <div className="mx-4 mt-4 flex items-start gap-2 text-red-400 bg-red-900/20 border border-red-700/30 rounded-xl px-3 py-2.5 text-sm">
@@ -263,11 +343,10 @@ export function WalletConnect({
             <div className="p-3 space-y-1.5 max-h-[65vh] overflow-y-auto">
               {WALLETS.map((wallet) => {
                 const isActive = connectingId === wallet.id;
-                const isInstalled = wallet.id === "freighter" && isFreighterInstalled && !mobile;
-                const needsInstall = wallet.id === "freighter" && !isFreighterInstalled && !mobile;
-                const desktopOnly = wallet.id === "freighter" && mobile;
-                const mobileRecommended = wallet.id === "lobstr" && mobile;
-                const showRecommended = mobileRecommended || (wallet.recommended && !mobile);
+                const isInstalled = wallet.id === "freighter" && isFreighterInstalled;
+                const needsInstall = wallet.id === "freighter" && !isFreighterInstalled;
+                const desktopOnly = false;
+                const showRecommended = wallet.recommended;
 
                 return (
                   <button
@@ -293,7 +372,7 @@ export function WalletConnect({
 
                         {showRecommended && (
                           <span className="inline-flex items-center gap-0.5 text-xs bg-stellar-600/40 text-stellar-300 border border-stellar-500/30 px-1.5 py-0.5 rounded-full font-medium">
-                            <Star size={9} fill="currentColor" /> {mobileRecommended ? "Use on Mobile" : "Recommended"}
+                            <Star size={9} fill="currentColor" /> Recommended
                           </span>
                         )}
 
@@ -303,13 +382,7 @@ export function WalletConnect({
                           </span>
                         )}
 
-                        {desktopOnly && (
-                          <span className="text-xs text-gray-500 flex items-center gap-0.5">
-                            Desktop only
-                          </span>
-                        )}
-
-                        {!desktopOnly && (needsInstall || wallet.id !== "freighter") && (
+                        {(needsInstall || wallet.id !== "freighter") && (
                           <span className="text-xs text-gray-500 flex items-center gap-0.5">
                             <ExternalLink size={9} />
                             {needsInstall ? "Install" : "Open"}
@@ -317,7 +390,7 @@ export function WalletConnect({
                         )}
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5 truncate">
-                        {desktopOnly ? "Browser extension — not available on mobile" : wallet.description}
+                        {wallet.description}
                       </p>
                     </div>
 
