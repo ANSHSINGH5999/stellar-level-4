@@ -13,23 +13,29 @@ export const server = new StellarSdk.Horizon.Server(HORIZON_URL, {
 });
 
 // ── STLR Token ─────────────────────────────────────────────────────────────
-export const STLR_ISSUER = import.meta.env.VITE_STLR_ISSUER || "";
+// Testnet defaults — safe to embed (testnet only, no real value)
+export const STLR_ISSUER =
+  import.meta.env.VITE_STLR_ISSUER ||
+  "GCTWILTRMEWG4ZNWK6GTT5XRBR7BXZZ2PSRQ5PMDKTFDTZSPKKNLBSJO";
 
-/** Always returns a proper Asset instance, throws a clear error if issuer is missing. */
+// ── Staking Escrow ─────────────────────────────────────────────────────────
+export const STAKING_ACCOUNT =
+  import.meta.env.VITE_STAKING_ACCOUNT ||
+  "GDBLLO3W3ZSOWJP2PG6R3MLKUUXN5M6KPVOBADG5WRPIVJFLDPRFGJXF";
+
+export const STAKING_SECRET =
+  import.meta.env.VITE_STAKING_SECRET ||
+  "SAUU3BRXD3TTGVYTMES4E5E6RJJ6Y2CXRPWEUYG3LHCXEMEBTLRCVGTA";
+
+/** Always returns a proper Asset instance. */
 export function getSTLRAsset() {
-  if (!STLR_ISSUER) throw new Error("STLR issuer not configured — set VITE_STLR_ISSUER in environment variables");
   return new StellarSdk.Asset("STLR", STLR_ISSUER);
 }
 
-/** True when all required environment variables are present */
-export const IS_CONFIGURED = !!(STLR_ISSUER && STAKING_ACCOUNT);
+/** True when the app is connected to real testnet accounts (always true with defaults). */
+export const IS_CONFIGURED = true;
 
-// Backwards-compat alias for code that reads STLR_ASSET directly
-export const STLR_ASSET = STLR_ISSUER ? new StellarSdk.Asset("STLR", STLR_ISSUER) : null;
-
-// ── Staking Escrow ─────────────────────────────────────────────────────────
-export const STAKING_ACCOUNT = import.meta.env.VITE_STAKING_ACCOUNT || "";
-export const STAKING_SECRET  = import.meta.env.VITE_STAKING_SECRET  || "";
+export const STLR_ASSET = new StellarSdk.Asset("STLR", STLR_ISSUER);
 
 // ── Constants ──────────────────────────────────────────────────────────────
 export const APY_RATE          = 0.12;           // 12% per year
