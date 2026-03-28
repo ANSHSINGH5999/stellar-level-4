@@ -10,9 +10,7 @@ import { TokenInfo } from "./components/TokenInfo.jsx";
 import { StakingPanel } from "./components/StakingPanel.jsx";
 import { SplashScreen } from "./components/SplashScreen.jsx";
 import { EventFeed } from "./components/EventFeed.jsx";
-import { STLR_ISSUER, APY_RATE } from "./lib/stellar.js";
-
-const isConfigured = !!STLR_ISSUER;
+import { APY_RATE } from "./lib/stellar.js";
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
@@ -161,7 +159,6 @@ export default function App() {
                 cooldownEnd={data.cooldownEnd}
                 hasTrust={data.hasTrust}
                 ops={ops}
-                isConfigured={isConfigured}
               />
               <EventFeed
                 events={events}

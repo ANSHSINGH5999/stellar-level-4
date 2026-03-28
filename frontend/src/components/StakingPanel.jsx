@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import {
-  Loader2, Lock, Unlock, Gift, AlertTriangle,
+  Loader2, Lock, Unlock, Gift,
   CheckCircle2, Clock, Droplets,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -17,8 +17,7 @@ function formatCountdown(cooldownEnd) {
 }
 
 export function StakingPanel({
-  stlrBalance, stakedAmount, pendingReward, cooldownEnd, hasTrust,
-  ops, isConfigured,
+  stlrBalance, stakedAmount, pendingReward, cooldownEnd, hasTrust, ops,
 }) {
   const [amount, setAmount]   = useState("");
   const [loading, setLoading] = useState(null);
@@ -51,18 +50,6 @@ export function StakingPanel({
   const canUnstake = cooldownEnd instanceof Date &&
     !isNaN(cooldownEnd.getTime()) &&
     cooldownEnd.getTime() <= Date.now();
-
-  if (!isConfigured) {
-    return (
-      <div className="card flex items-center justify-center py-12 text-center">
-        <div>
-          <AlertTriangle size={32} className="text-yellow-400 mx-auto mb-3" />
-          <p className="text-gray-300 font-medium mb-1">Contracts not configured</p>
-          <p className="text-gray-500 text-sm">Run <code className="font-mono text-xs bg-stellar-800 px-1 rounded">npm run setup</code> first</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="card space-y-5">
