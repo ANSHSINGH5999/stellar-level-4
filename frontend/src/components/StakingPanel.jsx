@@ -35,7 +35,11 @@ export function StakingPanel({
     } catch (err) {
       Sentry.captureException(err, { tags: { action: label } });
       const msg = err?.message || "Transaction failed";
-      toast.error(msg.slice(0, 120), { id });
+      if (msg.startsWith("VIEW_ONLY:")) {
+        toast.error("View-only mode — open this app in Freighter browser to sign transactions.", { id });
+      } else {
+        toast.error(msg.slice(0, 120), { id });
+      }
     } finally {
       setLoading(null);
     }

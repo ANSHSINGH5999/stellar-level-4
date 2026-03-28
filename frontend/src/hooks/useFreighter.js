@@ -6,6 +6,7 @@ import {
   isAllowed,
   signTransaction,
 } from "@stellar/freighter-api";
+import * as StellarSdk from "@stellar/stellar-sdk";
 import * as Sentry from "@sentry/react";
 
 export const STELLAR_NETWORKS = {
@@ -13,6 +14,8 @@ export const STELLAR_NETWORKS = {
   TESTNET:   { name: "Stellar Testnet", passphrase: "Test SDF Network ; September 2015" },
   FUTURENET: { name: "Stellar Futurenet", passphrase: "Test SDF Future Network ; October 2022" },
 };
+
+const MANUAL_KEY = "stellar_manual_address";
 
 // Wait for Freighter to inject window.freighter (mobile injects with delay)
 const waitForFreighter = (timeout = 8000) =>
@@ -34,16 +37,22 @@ function unwrap(result, key) {
   return result;
 }
 
+export function isValidStellarAddress(addr) {
+  try { return StellarSdk.StrKey.isValidEd25519PublicKey(addr?.trim()); }
+  catch { return false; }
+}
+
 export function useFreighter() {
-  const [account, setAccount]                = useState(null);
-  const [network, setNetwork]                = useState(null);
+  const [account, setAccount]                = useState(() => localStorage.getItem(MANUAL_KEY) || null);
+  const [network, setNetwork]                = useState("TESTNET");
+  const [isViewOnly, setIsViewOnly]          = useState(() => !!localStorage.getItem(MANUAL_KEY));
   const [isFreighterInstalled, setInstalled] = useState(
     () => typeof window !== "undefined" && !!window.freighter
   );
   const [isConnecting, setIsConnecting]      = useState(false);
   const [error, setError]                    = useState(null);
 
-  // Auto-detect + auto-reconnect on mount
+  // Auto-detect Freighter + auto-reconnect on mount
   useEffect(() => {
     let cancelled = false;
     async function init() {
@@ -51,44 +60,45 @@ export function useFreighter() {
       if (cancelled) return;
       if (found) {
         setInstalled(true);
-        try {
-          const allowed = await isAllowed();
-          const isOk = unwrap(allowed, "isAllowed") ?? allowed ?? false;
-          if (isOk && !cancelled) {
-            const addrRes = await getAddress();
-            const addr    = unwrap(addrRes, "address") ?? addrRes;
-            const netRes  = await getNetwork();
-            const net     = unwrap(netRes, "network") ?? netRes;
-            if (!cancelled && addr) { setAccount(addr); setNetwork(net || "TESTNET"); }
-          }
-        } catch {}
+        // Only auto-reconnect if NOT in manual/view-only mode
+        if (!localStorage.getItem(MANUAL_KEY)) {
+          try {
+            const allowed = await isAllowed();
+            const isOk = unwrap(allowed, "isAllowed") ?? allowed ?? false;
+            if (isOk && !cancelled) {
+              const addrRes = await getAddress();
+              const addr    = unwrap(addrRes, "address") ?? addrRes;
+              const netRes  = await getNetwork();
+              const net     = unwrap(netRes, "network") ?? netRes;
+              if (!cancelled && addr) {
+                setAccount(addr);
+                setNetwork(net || "TESTNET");
+                setIsViewOnly(false);
+              }
+            }
+          } catch {}
+        }
       }
     }
     init();
     return () => { cancelled = true; };
   }, []);
 
+  // ── Freighter connect ──────────────────────────────────────────────────────
   const connect = useCallback(async () => {
     setIsConnecting(true);
     setError(null);
-
     try {
-      // Wait for Freighter to be ready (handles mobile late injection)
       const found = await waitForFreighter(8000);
       if (!found) {
-        setError("Freighter not found. Open this app inside Freighter's browser tab.");
+        setError("Freighter not found. Open this app inside Freighter's browser, or use address input below.");
         return false;
       }
       setInstalled(true);
 
-      // Request access — exact method from mentor
       const result = await requestAccess();
-      if (result?.error) {
-        setError(result.error);
-        return false;
-      }
+      if (result?.error) { setError(result.error); return false; }
 
-      // Get address
       const addrRes = await getAddress();
       const addr    = unwrap(addrRes, "address") ?? addrRes;
       if (!addr || typeof addr !== "string") {
@@ -96,10 +106,11 @@ export function useFreighter() {
         return false;
       }
 
-      // Get network
       const netRes = await getNetwork();
       const net    = unwrap(netRes, "network") ?? netRes ?? "TESTNET";
 
+      localStorage.removeItem(MANUAL_KEY);
+      setIsViewOnly(false);
       setAccount(addr);
       setNetwork(net);
       return true;
@@ -119,14 +130,35 @@ export function useFreighter() {
     }
   }, []);
 
+  // ── Manual address (view-only) connect ────────────────────────────────────
+  const connectManual = useCallback((address) => {
+    const addr = address?.trim();
+    if (!isValidStellarAddress(addr)) {
+      setError("Invalid Stellar address. Must start with G and be 56 characters.");
+      return false;
+    }
+    localStorage.setItem(MANUAL_KEY, addr);
+    setAccount(addr);
+    setNetwork("TESTNET");
+    setIsViewOnly(true);
+    setError(null);
+    return true;
+  }, []);
+
+  // ── Disconnect ─────────────────────────────────────────────────────────────
   const disconnect = useCallback(() => {
+    localStorage.removeItem(MANUAL_KEY);
     setAccount(null);
     setNetwork(null);
+    setIsViewOnly(false);
     setError(null);
   }, []);
 
+  // ── Sign transaction (blocked in view-only mode) ───────────────────────────
   const signTx = useCallback(async (xdr, networkPassphrase) => {
     if (!account) throw new Error("Wallet not connected");
+    if (isViewOnly) throw new Error("VIEW_ONLY: Open this app in Freighter to sign transactions.");
+
     const passphrase =
       networkPassphrase ||
       STELLAR_NETWORKS[network]?.passphrase ||
@@ -151,7 +183,7 @@ export function useFreighter() {
         throw err;
       }
     }
-  }, [account, network]);
+  }, [account, network, isViewOnly]);
 
   return {
     account,
@@ -159,9 +191,11 @@ export function useFreighter() {
     networkInfo: STELLAR_NETWORKS[network] || { name: network || "Unknown", passphrase: "" },
     isFreighterInstalled,
     isConnecting,
+    isViewOnly,
     error,
     isConnected: !!account,
     connect,
+    connectManual,
     disconnect,
     signTx,
   };

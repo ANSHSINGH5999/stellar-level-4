@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { Toaster } from "react-hot-toast";
-import { Star, Github, ExternalLink, RefreshCw, Wallet, AlertTriangle } from "lucide-react";
+import { Star, Github, ExternalLink, RefreshCw, Wallet, AlertTriangle, Eye } from "lucide-react";
 import { useFreighter } from "./hooks/useFreighter.js";
 import { useStellarData } from "./hooks/useStellarData.js";
 import { useStellarStaking } from "./hooks/useStellarStaking.js";
@@ -64,8 +64,10 @@ export default function App() {
             networkInfo={freighter.networkInfo}
             isConnecting={freighter.isConnecting}
             isFreighterInstalled={freighter.isFreighterInstalled}
+            isViewOnly={freighter.isViewOnly}
             error={freighter.error}
             onConnect={freighter.connect}
+            onConnectManual={freighter.connectManual}
             onDisconnect={freighter.disconnect}
           />
         </div>
@@ -86,6 +88,26 @@ export default function App() {
                 environment, then rebuild. Run <code className="font-mono bg-black/30 px-1 rounded">npm run setup</code> locally to generate accounts.
               </p>
             </div>
+          </div>
+        )}
+
+        {/* View-only banner */}
+        {account && freighter.isViewOnly && (
+          <div className="flex items-start gap-3 bg-amber-900/20 border border-amber-500/30 rounded-xl px-4 py-3">
+            <Eye size={16} className="text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-amber-300 text-sm font-medium">View-Only Mode</p>
+              <p className="text-amber-600 text-xs mt-0.5">
+                You can see real balances and rewards. To stake, unstake or claim — open this app in{" "}
+                <strong className="text-amber-400">Freighter's browser tab</strong> and reconnect.
+              </p>
+            </div>
+            <button
+              onClick={freighter.connect}
+              className="text-xs bg-amber-700/40 hover:bg-amber-700/60 border border-amber-600/40 text-amber-300 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap flex-shrink-0"
+            >
+              Connect Freighter
+            </button>
           </div>
         )}
 
@@ -118,12 +140,19 @@ export default function App() {
         {account && (
           <div className="card flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-5">
             <div className="flex items-center gap-2 flex-shrink-0">
-              <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-                <rect width="24" height="24" rx="6" fill="#6366F1" />
-                <path d="M6 12 L12 6 L18 12 L12 18 Z" fill="white" opacity="0.9" />
-                <circle cx="12" cy="12" r="2.5" fill="#6366F1" />
-              </svg>
-              <span className="text-sm font-semibold text-gray-200">Freighter</span>
+              {freighter.isViewOnly
+                ? <Eye size={18} className="text-amber-400" />
+                : (
+                  <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+                    <rect width="24" height="24" rx="6" fill="#6366F1" />
+                    <path d="M6 12 L12 6 L18 12 L12 18 Z" fill="white" opacity="0.9" />
+                    <circle cx="12" cy="12" r="2.5" fill="#6366F1" />
+                  </svg>
+                )
+              }
+              <span className="text-sm font-semibold text-gray-200">
+                {freighter.isViewOnly ? "View Only" : "Freighter"}
+              </span>
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse-slow" />
             </div>
 
