@@ -10,7 +10,7 @@ const isMobile = () =>
     typeof navigator !== "undefined" ? navigator.userAgent : ""
   );
 
-// ── Wallet icons ────────────────────────────────────────────────────────────
+// ── Wallet icon ──────────────────────────────────────────────────────────────
 const FreighterIcon = () => (
   <svg viewBox="0 0 40 40" fill="none" className="w-8 h-8 flex-shrink-0">
     <rect width="40" height="40" rx="10" fill="#6366F1" />
@@ -19,15 +19,7 @@ const FreighterIcon = () => (
   </svg>
 );
 
-const XBullIcon = () => (
-  <svg viewBox="0 0 40 40" fill="none" className="w-8 h-8 flex-shrink-0">
-    <rect width="40" height="40" rx="10" fill="#0f172a" />
-    <path d="M12 14 L20 26 L28 14" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-    <path d="M12 26 L20 14 L28 26" stroke="#3b82f6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
-  </svg>
-);
-
-// ── Copy URL button ─────────────────────────────────────────────────────────
+// ── Copy URL button ──────────────────────────────────────────────────────────
 function CopyButton({ text, label = "Copy" }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -46,7 +38,7 @@ function CopyButton({ text, label = "Copy" }) {
   );
 }
 
-// ── Address input (view-only) ───────────────────────────────────────────────
+// ── Address input (view-only) ────────────────────────────────────────────────
 function AddressInput({ onConnect }) {
   const [addr, setAddr] = useState("");
   const [err, setErr]   = useState("");
@@ -82,7 +74,7 @@ function AddressInput({ onConnect }) {
       <div className="flex items-start gap-2 bg-amber-900/20 border border-amber-700/30 rounded-xl px-3 py-2">
         <Eye size={12} className="text-amber-400 flex-shrink-0 mt-0.5" />
         <p className="text-xs text-amber-300">
-          <strong>View-only</strong> — see real balances &amp; rewards. Staking needs Freighter or xBull.
+          <strong>View-only</strong> — see real balances &amp; rewards. Staking needs Freighter.
         </p>
       </div>
       <button
@@ -96,7 +88,7 @@ function AddressInput({ onConnect }) {
   );
 }
 
-// ── Mobile Freighter guide ──────────────────────────────────────────────────
+// ── Mobile Freighter guide ───────────────────────────────────────────────────
 function FreighterMobileGuide() {
   const appUrl    = window.location.href;
   const isAndroid = /Android/i.test(navigator.userAgent);
@@ -158,23 +150,22 @@ function FreighterMobileGuide() {
 
 const NETWORK_BADGE = { PUBLIC: "badge-green", TESTNET: "badge-yellow", FUTURENET: "badge-blue" };
 
-// ── Main component ──────────────────────────────────────────────────────────
+// ── Main component ───────────────────────────────────────────────────────────
 export function WalletConnect({
   account, network, networkInfo,
-  isConnecting, isFreighterInstalled, isXBullInstalled,
+  isConnecting, isFreighterInstalled,
   isViewOnly, walletType, error,
-  onConnect, onConnectXBull, onConnectManual, onDisconnect,
+  onConnect, onConnectManual, onDisconnect,
 }) {
-  const [showModal, setShowModal]       = useState(false);
-  const [tab, setTab]                   = useState("freighter");
-  const [connecting, setConnecting]     = useState(null);
+  const [showModal, setShowModal]   = useState(false);
+  const [tab, setTab]               = useState("freighter");
+  const [connecting, setConnecting] = useState(null);
   const mobile = useMemo(() => isMobile(), []);
 
-  const shortAddr = account ? `${account.slice(0, 6)}…${account.slice(-4)}` : null;
+  const shortAddr  = account ? `${account.slice(0, 6)}…${account.slice(-4)}` : null;
+  const walletLabel = walletType === "manual" ? "View Only" : "Freighter";
 
-  const walletLabel = walletType === "xbull" ? "xBull" : walletType === "manual" ? "View Only" : "Freighter";
-
-  // ── Connected ─────────────────────────────────────────────────────────────
+  // ── Connected ──────────────────────────────────────────────────────────────
   if (account) {
     return (
       <div className="flex items-center gap-2 flex-wrap">
@@ -184,9 +175,9 @@ export function WalletConnect({
           </span>
         )}
         <div className="flex items-center gap-2 bg-stellar-800/50 border border-stellar-600/30 rounded-xl px-3 py-1.5">
-          {walletType === "xbull"  ? <XBullIcon />     :
-           walletType === "manual" ? <Eye size={14} className="text-amber-400" /> :
-           <FreighterIcon />}
+          {walletType === "manual"
+            ? <Eye size={14} className="text-amber-400" />
+            : <FreighterIcon />}
           <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse-slow" />
           <span className="font-mono text-sm text-gray-200">{shortAddr}</span>
           <span className="text-xs text-gray-500">{walletLabel}</span>
@@ -201,7 +192,7 @@ export function WalletConnect({
     );
   }
 
-  // ── Trigger helper ────────────────────────────────────────────────────────
+  // ── Trigger helper ─────────────────────────────────────────────────────────
   const tryConnect = async (type, fn) => {
     setConnecting(type);
     const ok = await fn();
@@ -209,7 +200,7 @@ export function WalletConnect({
     if (ok) setShowModal(false);
   };
 
-  // ── Disconnected ──────────────────────────────────────────────────────────
+  // ── Disconnected ───────────────────────────────────────────────────────────
   return (
     <>
       <button
@@ -244,24 +235,21 @@ export function WalletConnect({
             {/* Tabs */}
             <div className="flex border-b border-stellar-800/50">
               {[
-                { id: "freighter", icon: <Wallet size={12} />, label: "Freighter" },
-                { id: "xbull",     icon: <XBullIcon />,        label: "xBull" },
-                { id: "address",   icon: <KeyRound size={12} />, label: "Paste Address" },
+                { id: "freighter", icon: <Wallet size={12} />,    label: "Freighter" },
+                { id: "address",   icon: <KeyRound size={12} />,  label: "Paste Address" },
               ].map(t => (
                 <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
                   className={`flex-1 py-2.5 text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
                     tab === t.id
-                      ? t.id === "xbull" ? "text-blue-400 border-b-2 border-blue-500"
-                        : t.id === "address" ? "text-amber-400 border-b-2 border-amber-500"
+                      ? t.id === "address"
+                        ? "text-amber-400 border-b-2 border-amber-500"
                         : "text-indigo-400 border-b-2 border-indigo-500"
                       : "text-gray-500 hover:text-gray-300"
                   }`}
                 >
-                  {t.id === "xbull"
-                    ? <span className="w-3 h-3 rounded bg-blue-600 inline-block flex-shrink-0" />
-                    : t.icon}
+                  {t.icon}
                   {t.label}
                 </button>
               ))}
@@ -321,63 +309,11 @@ export function WalletConnect({
                 </div>
               )}
 
-              {/* ── xBull tab ── */}
-              {tab === "xbull" && (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3 bg-stellar-800/30 border border-stellar-700/30 rounded-2xl p-4">
-                    <XBullIcon />
-                    <div>
-                      <p className="text-sm font-semibold text-gray-100">xBull Wallet</p>
-                      <p className="text-xs text-gray-500">Feature-rich Stellar wallet</p>
-                    </div>
-                  </div>
-
-                  {isXBullInstalled
-                    ? (
-                      <div className="flex items-center gap-2 bg-green-900/20 border border-green-700/30 rounded-xl px-3 py-2">
-                        <CheckCircle2 size={13} className="text-green-400" />
-                        <p className="text-xs text-green-300">xBull detected ✓</p>
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-2 bg-blue-900/20 border border-blue-700/30 rounded-xl px-3 py-2.5">
-                        <AlertCircle size={13} className="text-blue-400 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-blue-300">
-                          xBull not detected.{" "}
-                          <a href="https://xbull.app" target="_blank" rel="noopener noreferrer" className="underline text-blue-200">Install xBull</a>
-                          {" "}then refresh this page.
-                        </p>
-                      </div>
-                    )
-                  }
-
-                  <button
-                    onClick={() => tryConnect("xbull", onConnectXBull)}
-                    disabled={!!connecting || !isXBullInstalled}
-                    className="w-full py-3 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors"
-                  >
-                    {connecting === "xbull"
-                      ? <><Loader2 size={15} className="animate-spin" /> Connecting…</>
-                      : "Connect with xBull"
-                    }
-                  </button>
-
-                  {!isXBullInstalled && (
-                    <a
-                      href="https://xbull.app"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full flex items-center justify-center gap-2 text-sm text-blue-400 hover:text-blue-300 py-2"
-                    >
-                      <ExternalLink size={13} /> Get xBull Wallet
-                    </a>
-                  )}
-                </div>
-              )}
-
               {/* ── Address tab ── */}
               {tab === "address" && (
                 <AddressInput onConnect={(addr) => { onConnectManual(addr); setShowModal(false); }} />
               )}
+
             </div>
           </div>
         </div>

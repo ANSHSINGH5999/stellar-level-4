@@ -64,12 +64,10 @@ export default function App() {
             networkInfo={freighter.networkInfo}
             isConnecting={freighter.isConnecting}
             isFreighterInstalled={freighter.isFreighterInstalled}
-            isXBullInstalled={freighter.isXBullInstalled}
             isViewOnly={freighter.isViewOnly}
             walletType={freighter.walletType}
             error={freighter.error}
             onConnect={freighter.connect}
-            onConnectXBull={freighter.connectXBull}
             onConnectManual={freighter.connectManual}
             onDisconnect={freighter.disconnect}
           />
@@ -134,12 +132,10 @@ export default function App() {
               networkInfo={freighter.networkInfo}
               isConnecting={freighter.isConnecting}
               isFreighterInstalled={freighter.isFreighterInstalled}
-              isXBullInstalled={freighter.isXBullInstalled}
               isViewOnly={freighter.isViewOnly}
               walletType={freighter.walletType}
               error={freighter.error}
               onConnect={freighter.connect}
-              onConnectXBull={freighter.connectXBull}
               onConnectManual={freighter.connectManual}
               onDisconnect={freighter.disconnect}
             />
@@ -152,16 +148,14 @@ export default function App() {
             <div className="flex items-center gap-2 flex-shrink-0">
               {freighter.isViewOnly
                 ? <Eye size={18} className="text-amber-400" />
-                : (
-                  <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+                : <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
                     <rect width="24" height="24" rx="6" fill="#6366F1" />
                     <path d="M6 12 L12 6 L18 12 L12 18 Z" fill="white" opacity="0.9" />
                     <circle cx="12" cy="12" r="2.5" fill="#6366F1" />
                   </svg>
-                )
               }
               <span className="text-sm font-semibold text-gray-200">
-                {freighter.walletType === "xbull" ? "xBull" : freighter.isViewOnly ? "View Only" : "Freighter"}
+                {freighter.isViewOnly ? "View Only" : "Freighter"}
               </span>
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse-slow" />
             </div>
