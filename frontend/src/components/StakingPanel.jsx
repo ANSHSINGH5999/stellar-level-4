@@ -1,223 +1,231 @@
 import React, { useState, useCallback } from "react";
-import { ethers } from "ethers";
-import { Loader2, Lock, Unlock, Gift, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import {
+  Loader2, Lock, Unlock, Gift, AlertTriangle,
+  CheckCircle2, Clock, Droplets,
+} from "lucide-react";
 import toast from "react-hot-toast";
 import * as Sentry from "@sentry/react";
+import { COOLDOWN_SECONDS } from "../lib/stellar.js";
 
 function formatCountdown(cooldownEnd) {
-  if (!cooldownEnd) return null;
-  const now = Date.now();
-  const diff = cooldownEnd.getTime() - now;
-  if (diff <= 0) return "Ready to unstake";
-  const hours = Math.floor(diff / 3_600_000);
-  const mins = Math.floor((diff % 3_600_000) / 60_000);
-  return `${hours}h ${mins}m remaining`;
+  if (!cooldownEnd || !(cooldownEnd instanceof Date) || isNaN(cooldownEnd.getTime())) return null;
+  const diff = cooldownEnd.getTime() - Date.now();
+  if (diff <= 0) return "Ready to unstake!";
+  const h = Math.floor(diff / 3_600_000);
+  const m = Math.floor((diff % 3_600_000) / 60_000);
+  return `${h}h ${m}m remaining`;
 }
 
 export function StakingPanel({
-  tokenContract,
-  stakingContract,
-  account,
-  tokenBalance,
-  stakedAmount,
-  pendingReward,
-  cooldownEnd,
-  allowance,
-  stakingPaused,
-  onRefresh,
+  stlrBalance, stakedAmount, pendingReward, cooldownEnd, hasTrust,
+  ops, isConfigured,
 }) {
-  const [stakeAmount, setStakeAmount] = useState("");
-  const [loading, setLoading] = useState(null); // 'approve' | 'stake' | 'requestUnstake' | 'unstake' | 'claim'
+  const [amount, setAmount]   = useState("");
+  const [loading, setLoading] = useState(null);
+  const [lastTx, setLastTx]   = useState(null); // { hash, label }
 
-  const needsApproval =
-    stakeAmount &&
-    parseFloat(allowance) < parseFloat(stakeAmount || "0");
-
-  const run = useCallback(
-    async (label, fn) => {
-      setLoading(label);
-      const toastId = toast.loading(`${label}...`);
-      try {
-        const tx = await fn();
-        await tx.wait();
-        toast.success(`${label} successful!`, { id: toastId });
-        onRefresh();
-        if (label === "stake") setStakeAmount("");
-      } catch (err) {
-        Sentry.captureException(err, { tags: { action: label } });
-        const msg = err?.reason || err?.shortMessage || err?.message || "Transaction failed";
-        toast.error(msg.slice(0, 100), { id: toastId });
-      } finally {
-        setLoading(null);
-      }
-    },
-    [onRefresh]
-  );
-
-  const handleApprove = () =>
-    run("approve", () =>
-      tokenContract.approve(
-        stakingContract.target || stakingContract.address,
-        ethers.MaxUint256
-      )
-    );
-
-  const handleStake = () => {
-    if (!stakeAmount || parseFloat(stakeAmount) <= 0) {
-      toast.error("Enter a valid amount");
-      return;
+  const run = useCallback(async (label, fn) => {
+    setLoading(label);
+    setLastTx(null);
+    const id = toast.loading(label + "…");
+    try {
+      const hash = await fn();
+      toast.success(`${label} successful!`, { id });
+      if (hash) setLastTx({ hash, label });
+      if (label === "stake") setAmount("");
+    } catch (err) {
+      Sentry.captureException(err, { tags: { action: label } });
+      const msg = err?.message || "Transaction failed";
+      toast.error(msg.slice(0, 120), { id });
+    } finally {
+      setLoading(null);
     }
-    run("stake", () =>
-      stakingContract.stake(ethers.parseEther(stakeAmount))
-    );
-  };
+  }, []);
 
-  const handleRequestUnstake = () =>
-    run("requestUnstake", () => stakingContract.requestUnstake());
-
-  const handleUnstake = () =>
-    run("unstake", () => stakingContract.unstake());
-
-  const handleClaim = () =>
-    run("claim", () => stakingContract.claimRewards());
-
-  const setMax = () => setStakeAmount(parseFloat(tokenBalance).toFixed(4));
+  const stakedNum  = parseFloat(stakedAmount || "0");
+  const balNum     = parseFloat(stlrBalance  || "0");
+  const rewardNum  = parseFloat(pendingReward || "0");
+  const amountNum  = parseFloat(amount       || "0");
 
   const cooldownText = formatCountdown(cooldownEnd);
-  const canUnstake = cooldownEnd && cooldownEnd.getTime() <= Date.now();
+  const canUnstake = cooldownEnd instanceof Date &&
+    !isNaN(cooldownEnd.getTime()) &&
+    cooldownEnd.getTime() <= Date.now();
+
+  if (!isConfigured) {
+    return (
+      <div className="card flex items-center justify-center py-12 text-center">
+        <div>
+          <AlertTriangle size={32} className="text-yellow-400 mx-auto mb-3" />
+          <p className="text-gray-300 font-medium mb-1">Contracts not configured</p>
+          <p className="text-gray-500 text-sm">Run <code className="font-mono text-xs bg-stellar-800 px-1 rounded">npm run setup</code> first</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="card space-y-5">
       <h2 className="font-bold text-gray-100 text-lg">Staking</h2>
 
-      {stakingPaused && (
-        <div className="flex items-center gap-2 text-yellow-400 bg-yellow-900/20 border border-yellow-700/30 rounded-xl p-3 text-sm">
-          <AlertTriangle size={14} />
-          <span>Staking is currently paused by the protocol.</span>
+      {/* ── Trustline ── */}
+      {!hasTrust && (
+        <div className="space-y-3 border border-stellar-600/30 bg-stellar-800/20 rounded-xl p-4">
+          <p className="text-sm text-gray-300 font-medium">Step 1 — Activate STLR wallet</p>
+          <p className="text-xs text-gray-500">You need a STLR trustline before you can receive or stake tokens.</p>
+          <button
+            onClick={() => run("activate", ops.establishTrustline)}
+            disabled={!!loading}
+            className="btn-primary w-full flex items-center justify-center gap-2"
+          >
+            {loading === "activate"
+              ? <><Loader2 size={14} className="animate-spin" /> Activating…</>
+              : <><CheckCircle2 size={14} /> Activate STLR Wallet</>}
+          </button>
         </div>
       )}
 
-      {/* Stake Section */}
-      <div className="space-y-3">
-        <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
-          Stake STLR
-        </label>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
+      {/* ── Faucet ── */}
+      {hasTrust && balNum < 1 && stakedNum === 0 && (
+        <div className="space-y-3 border border-blue-600/30 bg-blue-900/10 rounded-xl p-4">
+          <p className="text-sm text-gray-300 font-medium">Step 2 — Get test STLR</p>
+          <p className="text-xs text-gray-500">Receive 10,000 STLR from the testnet faucet to start staking.</p>
+          <button
+            onClick={() => run("faucet", ops.requestFaucet)}
+            disabled={!!loading}
+            className="btn-primary w-full flex items-center justify-center gap-2 !bg-blue-700 hover:!bg-blue-600"
+          >
+            {loading === "faucet"
+              ? <><Loader2 size={14} className="animate-spin" /> Requesting…</>
+              : <><Droplets size={14} /> Get 10,000 STLR (Testnet Faucet)</>}
+          </button>
+        </div>
+      )}
+
+      {/* ── Stake ── */}
+      {hasTrust && (
+        <div className="space-y-3">
+          <label className="text-xs text-gray-400 uppercase tracking-wider font-medium">
+            Stake STLR
+          </label>
+          <div className="relative">
             <input
               type="number"
               className="input-field pr-16"
               placeholder="0.0"
-              value={stakeAmount}
-              onChange={(e) => setStakeAmount(e.target.value)}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               min="0"
               step="any"
-              disabled={!!loading || stakingPaused}
+              disabled={!!loading || balNum <= 0}
             />
             <button
-              onClick={setMax}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stellar-400 hover:text-stellar-300 font-medium"
+              onClick={() => setAmount(balNum.toFixed(7))}
+              disabled={balNum <= 0}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-stellar-400 hover:text-stellar-300 font-medium disabled:opacity-40"
             >
               MAX
             </button>
           </div>
+          <p className="text-xs text-gray-500">
+            Balance:{" "}
+            <span className="text-gray-300 font-mono">
+              {balNum.toLocaleString(undefined, { maximumFractionDigits: 2 })} STLR
+            </span>
+          </p>
+          <button
+            onClick={() => run("stake", () => ops.stake(parseFloat(amount).toFixed(7)))}
+            disabled={!!loading || amountNum <= 0 || amountNum > balNum}
+            className="btn-primary w-full flex items-center justify-center gap-2"
+          >
+            {loading === "stake"
+              ? <><Loader2 size={14} className="animate-spin" /> Staking…</>
+              : <><Lock size={14} /> Stake STLR</>}
+          </button>
         </div>
-        <p className="text-xs text-gray-500">
-          Balance: <span className="text-gray-300 font-mono">{parseFloat(tokenBalance).toFixed(2)} STLR</span>
-        </p>
+      )}
 
-        {needsApproval ? (
-          <button
-            onClick={handleApprove}
-            disabled={!!loading || stakingPaused}
-            className="btn-primary w-full flex items-center justify-center gap-2"
-          >
-            {loading === "approve" ? (
-              <><Loader2 size={14} className="animate-spin" /> Approving…</>
-            ) : (
-              <><CheckCircle2 size={14} /> Approve STLR</>
-            )}
-          </button>
-        ) : (
-          <button
-            onClick={handleStake}
-            disabled={!!loading || stakingPaused || !stakeAmount}
-            className="btn-primary w-full flex items-center justify-center gap-2"
-          >
-            {loading === "stake" ? (
-              <><Loader2 size={14} className="animate-spin" /> Staking…</>
-            ) : (
-              <><Lock size={14} /> Stake STLR</>
-            )}
-          </button>
-        )}
-      </div>
-
-      {/* Current Position */}
-      {parseFloat(stakedAmount) > 0 && (
+      {/* ── Current Position ── */}
+      {stakedNum > 0 && (
         <div className="border-t border-stellar-800/50 pt-4 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div className="stat-card">
               <span className="stat-label">Staked</span>
-              <span className="stat-value text-base">{parseFloat(stakedAmount).toFixed(2)}</span>
+              <span className="stat-value text-base">
+                {stakedNum.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </span>
               <span className="text-xs text-gray-500">STLR</span>
             </div>
             <div className="stat-card">
               <span className="stat-label">Pending Reward</span>
               <span className="stat-value text-base text-green-400">
-                {parseFloat(pendingReward).toFixed(6)}
+                {rewardNum.toFixed(6)}
               </span>
-              <span className="text-xs text-gray-500">STLR</span>
+              <span className="text-xs text-gray-500">STLR · live</span>
             </div>
           </div>
 
           {/* Claim */}
           <button
-            onClick={handleClaim}
-            disabled={!!loading || stakingPaused || parseFloat(pendingReward) === 0}
+            onClick={() => run("claim", () => ops.claimRewards(pendingReward))}
+            disabled={!!loading || rewardNum < 0.000001}
             className="btn-secondary w-full flex items-center justify-center gap-2"
           >
-            {loading === "claim" ? (
-              <><Loader2 size={14} className="animate-spin" /> Claiming…</>
-            ) : (
-              <><Gift size={14} /> Claim Rewards</>
-            )}
+            {loading === "claim"
+              ? <><Loader2 size={14} className="animate-spin" /> Claiming…</>
+              : <><Gift size={14} /> Claim Rewards</>}
           </button>
 
           {/* Unstake flow */}
           {!cooldownEnd ? (
             <button
-              onClick={handleRequestUnstake}
-              disabled={!!loading || stakingPaused}
+              onClick={() => run("request-unstake", ops.requestUnstake)}
+              disabled={!!loading}
               className="btn-secondary w-full flex items-center justify-center gap-2"
             >
-              {loading === "requestUnstake" ? (
-                <><Loader2 size={14} className="animate-spin" /> Processing…</>
-              ) : (
-                <><Unlock size={14} /> Request Unstake (3-day cooldown)</>
-              )}
+              {loading === "request-unstake"
+                ? <><Loader2 size={14} className="animate-spin" /> Processing…</>
+                : <><Unlock size={14} /> Request Unstake (3-day cooldown)</>}
             </button>
           ) : (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-xs text-gray-400 bg-stellar-800/30 rounded-lg px-3 py-2">
                 <Clock size={12} />
-                <span>{cooldownText}</span>
+                <span>{cooldownText || "Cooldown active"}</span>
               </div>
               {canUnstake && (
                 <button
-                  onClick={handleUnstake}
+                  onClick={() => run("unstake", () => ops.unstake(stakedAmount, pendingReward))}
                   disabled={!!loading}
-                  className="btn-primary w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600"
+                  className="btn-primary w-full flex items-center justify-center gap-2 !bg-emerald-700 hover:!bg-emerald-600"
                 >
-                  {loading === "unstake" ? (
-                    <><Loader2 size={14} className="animate-spin" /> Unstaking…</>
-                  ) : (
-                    <><Unlock size={14} /> Unstake & Claim All</>
-                  )}
+                  {loading === "unstake"
+                    ? <><Loader2 size={14} className="animate-spin" /> Unstaking…</>
+                    : <><Unlock size={14} /> Unstake & Claim All</>}
                 </button>
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Last Transaction ID ── */}
+      {lastTx && (
+        <div className="border-t border-white/10 pt-4 space-y-1">
+          <p className="text-xs text-white/40 uppercase tracking-wider font-medium">Last Transaction</p>
+          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+            <CheckCircle2 size={12} className="text-green-400 flex-shrink-0" />
+            <span className="text-xs text-white/50 capitalize">{lastTx.label}</span>
+            <a
+              href={`https://stellar.expert/explorer/testnet/tx/${lastTx.hash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto font-mono text-xs text-white/60 hover:text-white transition-colors truncate"
+              title={lastTx.hash}
+            >
+              {lastTx.hash.slice(0, 12)}…{lastTx.hash.slice(-8)}
+            </a>
+          </div>
         </div>
       )}
     </div>

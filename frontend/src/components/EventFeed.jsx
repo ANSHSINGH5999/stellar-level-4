@@ -1,7 +1,7 @@
 import React from "react";
 import {
-  Activity, Lock, Unlock, Gift, Coins, AlertTriangle,
-  ArrowRightLeft, Radio, Trash2, Clock
+  Activity, Lock, Unlock, Gift, CheckCircle2, AlertTriangle,
+  Radio, Trash2, Clock, Droplets,
 } from "lucide-react";
 
 const EVENT_CONFIG = {
@@ -10,62 +10,62 @@ const EVENT_CONFIG = {
     color: "text-blue-400",
     bg: "bg-blue-900/20 border-blue-700/20",
     label: "Staked",
-    format: (d) => `${parseFloat(d.amount).toFixed(4)} STLR staked by ${short(d.user)}`,
+    format: (d) => `${fmt(d?.amount)} STLR staked by ${d?.user || "—"}`,
   },
   UnstakeRequested: {
     icon: Clock,
     color: "text-yellow-400",
     bg: "bg-yellow-900/20 border-yellow-700/20",
     label: "Unstake Requested",
-    format: (d) =>
-      `${parseFloat(d.amount).toFixed(4)} STLR • cooldown ends ${d.cooldownEnd}`,
+    format: (d) => `Cooldown started by ${d?.user || "—"}`,
   },
   Unstaked: {
     icon: Unlock,
     color: "text-emerald-400",
     bg: "bg-emerald-900/20 border-emerald-700/20",
     label: "Unstaked",
-    format: (d) => `${parseFloat(d.amount).toFixed(4)} STLR unstaked by ${short(d.user)}`,
+    format: (d) =>
+      d?.amount
+        ? `${fmt(d.amount)} STLR returned to ${d?.user || "—"}`
+        : `Unstake completed — ${d?.user || "—"}`,
   },
   RewardsClaimed: {
     icon: Gift,
     color: "text-purple-400",
     bg: "bg-purple-900/20 border-purple-700/20",
     label: "Rewards Claimed",
-    format: (d) => `${parseFloat(d.amount).toFixed(6)} STLR rewards by ${short(d.user)}`,
+    format: (d) =>
+      d?.amount
+        ? `${fmt(d.amount, 6)} STLR rewards → ${d?.user || "—"}`
+        : `Rewards claimed by ${d?.user || "—"}`,
   },
-  TokensMinted: {
-    icon: Coins,
+  TrustlineSet: {
+    icon: CheckCircle2,
     color: "text-stellar-400",
     bg: "bg-stellar-900/30 border-stellar-700/20",
-    label: "Tokens Minted",
-    format: (d) =>
-      `${parseFloat(d.amount).toFixed(4)} STLR minted to ${short(d.to)} (${d.reason})`,
+    label: "Trustline Set",
+    format: (d) => `${d?.user || "—"} activated STLR wallet`,
   },
-  Transfer: {
-    icon: ArrowRightLeft,
-    color: "text-gray-400",
-    bg: "bg-gray-900/20 border-gray-700/20",
-    label: "Transfer",
-    format: (d) =>
-      `${parseFloat(d.amount).toFixed(4)} STLR: ${short(d.from)} → ${short(d.to)}`,
-  },
-  CircuitBreakerTriggered: {
-    icon: AlertTriangle,
-    color: "text-red-400",
-    bg: "bg-red-900/20 border-red-700/20",
-    label: "Circuit Breaker",
-    format: (d) => `Triggered by ${short(d.triggeredBy)}`,
+  AccountFunded: {
+    icon: Droplets,
+    color: "text-cyan-400",
+    bg: "bg-cyan-900/20 border-cyan-700/20",
+    label: "Account Funded",
+    format: (d) => `${fmt(d?.amount)} ${d?.asset || "XLM"} from ${d?.from || "—"}`,
   },
 };
 
-function short(addr) {
-  if (!addr || addr === "0x0000000000000000000000000000000000000000") return "mint";
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+function fmt(value, decimals = 4) {
+  const n = parseFloat(value || "0");
+  if (isNaN(n)) return "0";
+  return n.toLocaleString(undefined, { maximumFractionDigits: decimals });
 }
 
 function timeAgo(isoString) {
-  const diff = Date.now() - new Date(isoString).getTime();
+  if (!isoString) return "";
+  const time = new Date(isoString).getTime();
+  if (isNaN(time)) return "";
+  const diff = Date.now() - time;
   if (diff < 60_000) return "just now";
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
@@ -74,7 +74,7 @@ function timeAgo(isoString) {
 
 export function EventFeed({ events, isListening, onClear }) {
   return (
-    <div className="card flex flex-col h-full">
+    <div className="card flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
@@ -88,9 +88,7 @@ export function EventFeed({ events, isListening, onClear }) {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span
-            className={`text-xs ${isListening ? "text-green-400" : "text-gray-500"}`}
-          >
+          <span className={`text-xs ${isListening ? "text-green-400" : "text-gray-500"}`}>
             {isListening ? "Listening" : "Disconnected"}
           </span>
           {events.length > 0 && (
@@ -105,9 +103,9 @@ export function EventFeed({ events, isListening, onClear }) {
         </div>
       </div>
 
-      {/* Event types legend */}
+      {/* Type legend */}
       <div className="flex flex-wrap gap-1.5 mb-3">
-        {["Staked", "Unstaked", "RewardsClaimed", "TokensMinted"].map((type) => {
+        {["Staked", "Unstaked", "RewardsClaimed", "TrustlineSet"].map((type) => {
           const cfg = EVENT_CONFIG[type];
           const Icon = cfg.icon;
           return (
@@ -120,7 +118,7 @@ export function EventFeed({ events, isListening, onClear }) {
       </div>
 
       {/* Events list */}
-      <div className="flex-1 overflow-y-auto space-y-2 min-h-0 max-h-96 lg:max-h-full">
+      <div className="overflow-y-auto space-y-2 max-h-96 lg:max-h-[480px]">
         {events.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-gray-500">
             <Activity size={32} className="mb-3 opacity-30" />
@@ -137,8 +135,8 @@ export function EventFeed({ events, isListening, onClear }) {
               icon: Activity,
               color: "text-gray-400",
               bg: "bg-gray-900/20 border-gray-700/20",
-              label: evt.type,
-              format: (d) => JSON.stringify(d),
+              label: evt.type || "Unknown",
+              format: (d) => (d ? JSON.stringify(d).slice(0, 80) : ""),
             };
             const Icon = cfg.icon;
 
@@ -162,13 +160,18 @@ export function EventFeed({ events, isListening, onClear }) {
                       {timeAgo(evt.timestamp)}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-300 mt-0.5 break-all">
+                  <p className="text-xs text-gray-300 mt-0.5 break-words">
                     {cfg.format(evt.data)}
                   </p>
                   {evt.txHash && (
-                    <p className="text-xs text-gray-600 font-mono mt-0.5 truncate">
-                      {evt.txHash}
-                    </p>
+                    <a
+                      href={`https://stellar.expert/explorer/testnet/tx/${evt.txHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-gray-600 hover:text-stellar-400 font-mono mt-0.5 truncate block transition-colors"
+                    >
+                      {evt.txHash.slice(0, 16)}…{evt.txHash.slice(-8)}
+                    </a>
                   )}
                 </div>
               </div>

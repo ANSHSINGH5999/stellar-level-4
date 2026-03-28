@@ -1,30 +1,38 @@
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { Toaster } from "react-hot-toast";
-import { Star, Github, ExternalLink, RefreshCw, AlertCircle } from "lucide-react";
-import { useContract } from "./hooks/useContract.js";
-import { useEvents } from "./hooks/useEvents.js";
-import { useStakingData } from "./hooks/useStakingData.js";
+import { Star, Github, ExternalLink, RefreshCw, Wallet } from "lucide-react";
+import { useFreighter } from "./hooks/useFreighter.js";
+import { useStellarData } from "./hooks/useStellarData.js";
+import { useStellarStaking } from "./hooks/useStellarStaking.js";
+import { useStellarEvents } from "./hooks/useStellarEvents.js";
 import { WalletConnect } from "./components/WalletConnect.jsx";
 import { TokenInfo } from "./components/TokenInfo.jsx";
 import { StakingPanel } from "./components/StakingPanel.jsx";
+import { SplashScreen } from "./components/SplashScreen.jsx";
 import { EventFeed } from "./components/EventFeed.jsx";
+import { STLR_ISSUER, APY_RATE } from "./lib/stellar.js";
+
+const isConfigured = !!STLR_ISSUER;
 
 export default function App() {
-  const {
-    account, chainId, tokenContract, stakingContract,
-    isConnecting, error: walletError, connect, disconnect,
-    tokenAddress, stakingAddress,
-  } = useContract();
+  const [showSplash, setShowSplash] = useState(true);
+  const onSplashDone = useCallback(() => setShowSplash(false), []);
 
-  const stakingData = useStakingData({ tokenContract, stakingContract, account });
-  const { events, isListening, clearEvents } = useEvents({
-    tokenContract, stakingContract, account,
+  const freighter = useFreighter();
+  const account = freighter.account;
+
+  const data = useStellarData(account);
+  const { events, isListening, clearEvents } = useStellarEvents(account);
+
+  const ops = useStellarStaking({
+    account,
+    signTx: freighter.signTx,
+    onRefresh: data.refresh,
   });
-
-  const isReady = !!(account && tokenContract && stakingContract);
 
   return (
     <div className="min-h-screen flex flex-col">
+      {showSplash && <SplashScreen onDone={onSplashDone} />}
       <Toaster
         position="top-right"
         toastOptions={{
@@ -39,7 +47,7 @@ export default function App() {
         }}
       />
 
-      {/* Header */}
+      {/* ── Header ── */}
       <header className="border-b border-stellar-800/50 bg-stellar-950/80 backdrop-blur sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-2.5">
@@ -54,19 +62,21 @@ export default function App() {
 
           <WalletConnect
             account={account}
-            chainId={chainId}
-            isConnecting={isConnecting}
-            error={walletError}
-            onConnect={connect}
-            onDisconnect={disconnect}
+            network={freighter.network}
+            networkInfo={freighter.networkInfo}
+            isConnecting={freighter.isConnecting}
+            isFreighterInstalled={freighter.isFreighterInstalled}
+            error={freighter.error}
+            onConnect={freighter.connect}
+            onDisconnect={freighter.disconnect}
           />
         </div>
       </header>
 
-      {/* Main content */}
+      {/* ── Main ── */}
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-6 space-y-5">
 
-        {/* Not connected banner */}
+        {/* Not connected */}
         {!account && (
           <div className="card flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
             <div className="w-14 h-14 bg-stellar-700/40 rounded-full flex items-center justify-center flex-shrink-0">
@@ -75,87 +85,84 @@ export default function App() {
             <div className="flex-1">
               <h2 className="font-bold text-gray-100 text-lg mb-1">Welcome to Stellar DeFi</h2>
               <p className="text-gray-400 text-sm">
-                Stake STLR tokens to earn <span className="text-green-400 font-semibold">12% APY</span> in
-                on-chain rewards. Connect your wallet to get started.
+                Stake <span className="text-white font-semibold">STLR tokens</span> and earn{" "}
+                <span className="text-green-400 font-semibold">{(APY_RATE * 100).toFixed(0)}% APY</span> in on-chain rewards.
+                Connect Freighter to get started.
               </p>
             </div>
-            <button onClick={connect} disabled={isConnecting} className="btn-primary flex-shrink-0">
+            <button
+              onClick={freighter.connect}
+              disabled={freighter.isConnecting}
+              className="btn-primary flex-shrink-0 flex items-center gap-2"
+            >
+              <Wallet size={15} />
               Connect Wallet
             </button>
           </div>
         )}
 
-        {/* Contract addresses */}
-        {(tokenAddress || stakingAddress) && (
-          <div className="flex flex-wrap gap-3 text-xs font-mono">
-            {tokenAddress && (
-              <div className="flex items-center gap-1.5 bg-stellar-900/50 border border-stellar-700/30 rounded-lg px-3 py-1.5">
-                <span className="text-gray-500">Token:</span>
-                <span className="text-stellar-300">{tokenAddress.slice(0, 10)}…{tokenAddress.slice(-6)}</span>
-              </div>
-            )}
-            {stakingAddress && (
-              <div className="flex items-center gap-1.5 bg-stellar-900/50 border border-stellar-700/30 rounded-lg px-3 py-1.5">
-                <span className="text-gray-500">Staking:</span>
-                <span className="text-stellar-300">{stakingAddress.slice(0, 10)}…{stakingAddress.slice(-6)}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Warning if contracts not configured */}
-        {account && !tokenAddress && (
-          <div className="flex items-center gap-2 text-amber-400 bg-amber-900/20 border border-amber-700/30 rounded-xl p-3 text-sm">
-            <AlertCircle size={14} className="flex-shrink-0" />
-            <span>
-              Contract addresses not configured. Deploy contracts and set{" "}
-              <code className="font-mono text-xs bg-stellar-800 px-1 rounded">VITE_TOKEN_ADDRESS</code>{" "}
-              and{" "}
-              <code className="font-mono text-xs bg-stellar-800 px-1 rounded">VITE_STAKING_ADDRESS</code>{" "}
-              in <code className="font-mono text-xs bg-stellar-800 px-1 rounded">frontend/.env</code>.
-            </span>
-          </div>
-        )}
-
-        {/* Dashboard */}
-        {isReady && (
-          <>
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm text-gray-400 font-medium">Dashboard</h2>
-              <button
-                onClick={stakingData.refresh}
-                disabled={stakingData.isLoading}
-                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                <RefreshCw size={12} className={stakingData.isLoading ? "animate-spin" : ""} />
-                Refresh
-              </button>
+        {/* Connected account card */}
+        {account && (
+          <div className="card flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-5">
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
+                <rect width="24" height="24" rx="6" fill="#6366F1" />
+                <path d="M6 12 L12 6 L18 12 L12 18 Z" fill="white" opacity="0.9" />
+                <circle cx="12" cy="12" r="2.5" fill="#6366F1" />
+              </svg>
+              <span className="text-sm font-semibold text-gray-200">Freighter</span>
+              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse-slow" />
             </div>
 
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-500 mb-0.5">Stellar Public Key</p>
+              <p className="font-mono text-sm text-gray-200 break-all leading-relaxed">
+                {account}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={data.refresh}
+                disabled={data.isLoading}
+                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors bg-stellar-800/50 border border-stellar-700/30 px-2.5 py-1.5 rounded-lg"
+              >
+                <RefreshCw size={11} className={data.isLoading ? "animate-spin" : ""} />
+                Refresh
+              </button>
+              <a
+                href={`https://stellar.expert/explorer/${freighter.network === "PUBLIC" ? "public" : "testnet"}/account/${account}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-stellar-400 hover:text-stellar-300 bg-stellar-800/50 border border-stellar-700/30 px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+              >
+                <ExternalLink size={11} /> Explorer
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Staking Dashboard */}
+        {account && (
+          <>
             <TokenInfo
-              tokenBalance={stakingData.tokenBalance}
-              totalStaked={stakingData.totalStaked}
-              totalRewardsMinted={stakingData.totalRewardsMinted}
-              apyRate={stakingData.apyRate}
-              stakersCount={stakingData.stakersCount}
-              tokenPaused={stakingData.tokenPaused}
-              stakingPaused={stakingData.stakingPaused}
+              stlrBalance={data.stlrBalance}
+              totalStaked={data.totalStaked}
+              rewardPool={data.rewardPool}
+              totalStakers={data.totalStakers}
+              apyRate={data.apyRate}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
               <StakingPanel
-                tokenContract={tokenContract}
-                stakingContract={stakingContract}
-                account={account}
-                tokenBalance={stakingData.tokenBalance}
-                stakedAmount={stakingData.stakedAmount}
-                pendingReward={stakingData.pendingReward}
-                cooldownEnd={stakingData.cooldownEnd}
-                allowance={stakingData.allowance}
-                stakingPaused={stakingData.stakingPaused}
-                onRefresh={stakingData.refresh}
+                stlrBalance={data.stlrBalance}
+                stakedAmount={data.stakedAmount}
+                pendingReward={data.pendingReward}
+                cooldownEnd={data.cooldownEnd}
+                hasTrust={data.hasTrust}
+                ops={ops}
+                isConfigured={isConfigured}
               />
-
               <EventFeed
                 events={events}
                 isListening={isListening}
@@ -164,31 +171,28 @@ export default function App() {
             </div>
           </>
         )}
-
-        {/* Show event feed even when not fully ready but connected */}
-        {account && !isReady && (
-          <EventFeed events={events} isListening={isListening} onClear={clearEvents} />
-        )}
       </main>
 
-      {/* Footer */}
+      {/* ── Footer ── */}
       <footer className="border-t border-stellar-800/50 py-4 px-4 sm:px-6">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-500">
-          <span>© 2024 Stellar DeFi Platform • MIT License</span>
+          <span>© 2025 Stellar DeFi Platform · MIT License</span>
           <div className="flex items-center gap-4">
             <a
               href="https://github.com"
-              className="flex items-center gap-1 hover:text-gray-300 transition-colors"
               target="_blank"
               rel="noopener noreferrer"
+              className="flex items-center gap-1 hover:text-gray-300 transition-colors"
             >
               <Github size={12} /> GitHub
             </a>
             <a
-              href="#"
+              href="https://freighter.app"
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-1 hover:text-gray-300 transition-colors"
             >
-              <ExternalLink size={12} /> Docs
+              <ExternalLink size={12} /> Freighter
             </a>
           </div>
         </div>
