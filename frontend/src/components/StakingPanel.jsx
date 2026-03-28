@@ -6,6 +6,7 @@ import {
 import toast from "react-hot-toast";
 import * as Sentry from "@sentry/react";
 import { COOLDOWN_SECONDS, IS_CONFIGURED } from "../lib/stellar.js";
+import { XDRSigningModal } from "./XDRSigningModal.jsx";
 
 function formatCountdown(cooldownEnd) {
   if (!cooldownEnd || !(cooldownEnd instanceof Date) || isNaN(cooldownEnd.getTime())) return null;
@@ -19,27 +20,32 @@ function formatCountdown(cooldownEnd) {
 export function StakingPanel({
   stlrBalance, stakedAmount, pendingReward, cooldownEnd, hasTrust, ops,
 }) {
-  const [amount, setAmount]   = useState("");
-  const [loading, setLoading] = useState(null);
-  const [lastTx, setLastTx]   = useState(null); // { hash, label }
+  const [amount, setAmount]     = useState("");
+  const [loading, setLoading]   = useState(null);
+  const [lastTx, setLastTx]     = useState(null); // { hash, label }
+  const [xdrModal, setXdrModal] = useState(null); // { xdr, label }
 
   const run = useCallback(async (label, fn) => {
     setLoading(label);
     setLastTx(null);
     const id = toast.loading(label + "…");
     try {
-      const hash = await fn();
+      const result = await fn();
+
+      // View-only wallet: staking hook returned XDR for manual signing
+      if (result && typeof result === "object" && result.needsManualSign) {
+        toast.dismiss(id);
+        setXdrModal({ xdr: result.xdr, label });
+        return;
+      }
+
       toast.success(`${label} successful!`, { id });
-      if (hash) setLastTx({ hash, label });
+      if (result) setLastTx({ hash: result, label });
       if (label === "stake") setAmount("");
     } catch (err) {
       Sentry.captureException(err, { tags: { action: label } });
       const msg = err?.message || "Transaction failed";
-      if (msg.startsWith("VIEW_ONLY:")) {
-        toast.error("View-only mode — open this app in Freighter browser to sign transactions.", { id });
-      } else {
-        toast.error(msg.slice(0, 120), { id });
-      }
+      toast.error(msg.slice(0, 120), { id });
     } finally {
       setLoading(null);
     }
@@ -70,7 +76,7 @@ export function StakingPanel({
     );
   }
 
-  return (
+  const panel = (
     <div className="card space-y-5">
       <h2 className="font-bold text-gray-100 text-lg">Staking</h2>
 
@@ -235,5 +241,23 @@ export function StakingPanel({
         </div>
       )}
     </div>
+  );
+
+  return (
+    <>
+      {panel}
+      {xdrModal && (
+        <XDRSigningModal
+          xdr={xdrModal.xdr}
+          label={xdrModal.label}
+          onClose={() => setXdrModal(null)}
+          onSuccess={(hash) => {
+            setLastTx({ hash, label: xdrModal.label });
+            setXdrModal(null);
+            if (xdrModal.label === "stake") setAmount("");
+          }}
+        />
+      )}
+    </>
   );
 }

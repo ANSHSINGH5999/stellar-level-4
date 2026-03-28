@@ -16,18 +16,21 @@ import * as Sentry from "@sentry/react";
 export function useStellarStaking({ account, signTx, onRefresh }) {
 
   // ── Core: build, sign via Freighter, submit ─────────────────────────────
+  // Returns: tx hash string on success
+  //          { needsManualSign: true, xdr: string } if wallet is view-only
   const buildSign = useCallback(
     async (operations, coSigners = []) => {
-      try {
-        const acct = await server.loadAccount(account);
-        const builder = new StellarSdk.TransactionBuilder(acct, {
-          fee: StellarSdk.BASE_FEE,
-          networkPassphrase: NETWORK_PASSPHRASE,
-        });
-        for (const op of operations) builder.addOperation(op);
-        const tx = builder.setTimeout(180).build();
+      const acct = await server.loadAccount(account);
+      const builder = new StellarSdk.TransactionBuilder(acct, {
+        fee: StellarSdk.BASE_FEE,
+        networkPassphrase: NETWORK_PASSPHRASE,
+      });
+      for (const op of operations) builder.addOperation(op);
+      const tx = builder.setTimeout(180).build();
+      const xdr = tx.toXDR();
 
-        const signed = await signTx(tx.toXDR(), NETWORK_PASSPHRASE);
+      try {
+        const signed = await signTx(xdr, NETWORK_PASSPHRASE);
         if (!signed) throw new Error("Transaction was rejected");
 
         const signedTx = StellarSdk.TransactionBuilder.fromXDR(signed, NETWORK_PASSPHRASE);
@@ -37,9 +40,11 @@ export function useStellarStaking({ account, signTx, onRefresh }) {
         if (onRefresh) setTimeout(onRefresh, 2000);
         return result.hash;
       } catch (err) {
-        // Translate Horizon result codes into readable message
-        const msg = parseHorizonError(err);
-        throw new Error(msg);
+        // View-only wallet: return XDR so the UI can show the manual signing flow
+        if (err?.message?.startsWith("VIEW_ONLY")) {
+          return { needsManualSign: true, xdr };
+        }
+        throw new Error(parseHorizonError(err));
       }
     },
     [account, signTx, onRefresh]
