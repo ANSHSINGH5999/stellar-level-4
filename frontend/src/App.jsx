@@ -64,9 +64,12 @@ export default function App() {
             networkInfo={freighter.networkInfo}
             isConnecting={freighter.isConnecting}
             isFreighterInstalled={freighter.isFreighterInstalled}
+            isXBullInstalled={freighter.isXBullInstalled}
             isViewOnly={freighter.isViewOnly}
+            walletType={freighter.walletType}
             error={freighter.error}
             onConnect={freighter.connect}
+            onConnectXBull={freighter.connectXBull}
             onConnectManual={freighter.connectManual}
             onDisconnect={freighter.disconnect}
           />
@@ -131,9 +134,12 @@ export default function App() {
               networkInfo={freighter.networkInfo}
               isConnecting={freighter.isConnecting}
               isFreighterInstalled={freighter.isFreighterInstalled}
+              isXBullInstalled={freighter.isXBullInstalled}
               isViewOnly={freighter.isViewOnly}
+              walletType={freighter.walletType}
               error={freighter.error}
               onConnect={freighter.connect}
+              onConnectXBull={freighter.connectXBull}
               onConnectManual={freighter.connectManual}
               onDisconnect={freighter.disconnect}
             />
@@ -155,7 +161,7 @@ export default function App() {
                 )
               }
               <span className="text-sm font-semibold text-gray-200">
-                {freighter.isViewOnly ? "View Only" : "Freighter"}
+                {freighter.walletType === "xbull" ? "xBull" : freighter.isViewOnly ? "View Only" : "Freighter"}
               </span>
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse-slow" />
             </div>

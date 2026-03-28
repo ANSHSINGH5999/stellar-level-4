@@ -15,20 +15,24 @@ export const STELLAR_NETWORKS = {
   FUTURENET: { name: "Stellar Futurenet", passphrase: "Test SDF Future Network ; October 2022" },
 };
 
-const MANUAL_KEY = "stellar_manual_address";
+const MANUAL_KEY   = "stellar_manual_address";
+const WALLET_TYPE  = "stellar_wallet_type"; // 'freighter' | 'xbull' | 'manual'
 
-// Wait for Freighter to inject window.freighter (mobile injects with delay)
-const waitForFreighter = (timeout = 8000) =>
+// ── Wait for wallet injection ─────────────────────────────────────────────
+const waitFor = (check, timeout = 8000) =>
   new Promise((resolve) => {
-    if (window.freighter) { resolve(true); return; }
+    if (check()) { resolve(true); return; }
     const start = Date.now();
-    const check = () => {
-      if (window.freighter) { resolve(true); return; }
+    const poll = () => {
+      if (check()) { resolve(true); return; }
       if (Date.now() - start > timeout) { resolve(false); return; }
-      setTimeout(check, 500);
+      setTimeout(poll, 500);
     };
-    check();
+    poll();
   });
+
+const hasFreighter = () => typeof window !== "undefined" && !!window.freighter;
+const hasXBull     = () => typeof window !== "undefined" && !!window.xBullSDK;
 
 function unwrap(result, key) {
   if (result === null || result === undefined) return null;
@@ -43,94 +47,112 @@ export function isValidStellarAddress(addr) {
 }
 
 export function useFreighter() {
-  const [account, setAccount]                = useState(() => localStorage.getItem(MANUAL_KEY) || null);
-  const [network, setNetwork]                = useState("TESTNET");
-  const [isViewOnly, setIsViewOnly]          = useState(() => !!localStorage.getItem(MANUAL_KEY));
-  const [isFreighterInstalled, setInstalled] = useState(
-    () => typeof window !== "undefined" && !!window.freighter
-  );
-  const [isConnecting, setIsConnecting]      = useState(false);
-  const [error, setError]                    = useState(null);
+  const [account, setAccount]       = useState(() => localStorage.getItem(MANUAL_KEY) || null);
+  const [network, setNetwork]       = useState("TESTNET");
+  const [walletType, setWalletType] = useState(() => localStorage.getItem(WALLET_TYPE) || null);
+  const [isViewOnly, setIsViewOnly] = useState(() => localStorage.getItem(WALLET_TYPE) === "manual");
+  const [isFreighterInstalled, setFreighterInstalled] = useState(() => hasFreighter());
+  const [isXBullInstalled, setXBullInstalled]         = useState(() => hasXBull());
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError]               = useState(null);
 
-  // Auto-detect Freighter + auto-reconnect on mount
+  // ── Auto-detect + auto-reconnect on mount ─────────────────────────────────
   useEffect(() => {
     let cancelled = false;
+
     async function init() {
-      const found = await waitForFreighter(3000);
+      // Detect xBull
+      const xbullFound = await waitFor(hasXBull, 2000);
+      if (xbullFound && !cancelled) setXBullInstalled(true);
+
+      // Detect Freighter
+      const freighterFound = await waitFor(hasFreighter, 3000);
+      if (freighterFound && !cancelled) setFreighterInstalled(true);
+
       if (cancelled) return;
 
-      if (found) {
-        setInstalled(true);
+      const savedType = localStorage.getItem(WALLET_TYPE);
 
+      // Auto-reconnect xBull if previously used
+      if (xbullFound && savedType === "xbull") {
         try {
-          // Check if already allowed
-          const allowedRes = await isAllowed();
+          const res = await window.xBullSDK.connect({
+            canRequestPublicKey: true,
+            canRequestSign: true,
+          });
+          const addr = res?.publicKey || res;
+          if (addr && isValidStellarAddress(addr) && !cancelled) {
+            setAccount(addr); setNetwork("TESTNET");
+            setWalletType("xbull"); setIsViewOnly(false);
+            return;
+          }
+        } catch {}
+      }
+
+      // Auto-reconnect Freighter if detected
+      if (freighterFound) {
+        try {
+          const allowedRes     = await isAllowed();
           const alreadyAllowed = unwrap(allowedRes, "isAllowed") ?? allowedRes ?? false;
 
           if (alreadyAllowed) {
-            // Already has permission — grab address and upgrade from view-only
             const addrRes = await getAddress();
             const addr    = unwrap(addrRes, "address") ?? addrRes;
             const netRes  = await getNetwork();
             const net     = unwrap(netRes, "network") ?? netRes ?? "TESTNET";
-            if (!cancelled && addr) {
+            if (!cancelled && addr && isValidStellarAddress(addr)) {
+              localStorage.setItem(WALLET_TYPE, "freighter");
               localStorage.removeItem(MANUAL_KEY);
-              setAccount(addr);
-              setNetwork(net);
-              setIsViewOnly(false);
+              setAccount(addr); setNetwork(net);
+              setWalletType("freighter"); setIsViewOnly(false);
+              return;
             }
-          } else {
-            // Inside Freighter browser but not yet allowed → request access automatically
+          } else if (!savedType || savedType === "freighter") {
+            // Inside Freighter browser but not yet allowed → auto-request
             const result = await requestAccess();
             if (!cancelled && !result?.error) {
               const addrRes = await getAddress();
               const addr    = unwrap(addrRes, "address") ?? addrRes;
               const netRes  = await getNetwork();
               const net     = unwrap(netRes, "network") ?? netRes ?? "TESTNET";
-              if (addr) {
+              if (addr && isValidStellarAddress(addr)) {
+                localStorage.setItem(WALLET_TYPE, "freighter");
                 localStorage.removeItem(MANUAL_KEY);
-                setAccount(addr);
-                setNetwork(net);
-                setIsViewOnly(false);
+                setAccount(addr); setNetwork(net);
+                setWalletType("freighter"); setIsViewOnly(false);
               }
             }
           }
         } catch {}
       }
     }
+
     init();
     return () => { cancelled = true; };
   }, []);
 
   // ── Freighter connect ──────────────────────────────────────────────────────
   const connect = useCallback(async () => {
-    setIsConnecting(true);
-    setError(null);
+    setIsConnecting(true); setError(null);
     try {
-      // Wait for Freighter (handles mobile late injection)
-      const found = await waitForFreighter(8000);
+      const found = await waitFor(hasFreighter, 8000);
       if (!found) {
-        setError("Freighter not found. Open this app inside Freighter's browser, or paste your address below.");
+        setError("Freighter not found. Open this app inside Freighter's browser.");
         return false;
       }
-      setInstalled(true);
+      setFreighterInstalled(true);
 
-      // Check if already allowed — only call requestAccess if not yet allowed
-      const allowedRes    = await isAllowed();
+      const allowedRes     = await isAllowed();
       const alreadyAllowed = unwrap(allowedRes, "isAllowed") ?? allowedRes ?? false;
 
       if (!alreadyAllowed) {
         const result = await requestAccess();
-        if (result?.error) {
-          setError(result.error);
-          return false;
-        }
+        if (result?.error) { setError(result.error); return false; }
       }
 
-      // Get address + network
       const addrRes = await getAddress();
       const addr    = unwrap(addrRes, "address") ?? addrRes;
-      if (!addr || typeof addr !== "string") {
+      if (!addr || !isValidStellarAddress(addr)) {
         setError("Could not get wallet address. Please try again.");
         return false;
       }
@@ -138,28 +160,61 @@ export function useFreighter() {
       const netRes = await getNetwork();
       const net    = unwrap(netRes, "network") ?? netRes ?? "TESTNET";
 
+      localStorage.setItem(WALLET_TYPE, "freighter");
       localStorage.removeItem(MANUAL_KEY);
-      setIsViewOnly(false);
-      setAccount(addr);
-      setNetwork(net);
+      setAccount(addr); setNetwork(net);
+      setWalletType("freighter"); setIsViewOnly(false);
       return true;
     } catch (err) {
       Sentry.captureException(err);
       const msg = err?.message || String(err) || "Connection failed";
       if (msg.includes("message channel closed") || msg.includes("listener indicated")) {
-        setError("Freighter timed out — force close & reopen the app, then try again.");
+        setError("Freighter timed out — force close & reopen, then try again.");
       } else if (msg.toLowerCase().includes("declined") || msg.toLowerCase().includes("denied")) {
         setError("Connection rejected — tap Approve in Freighter.");
       } else {
         setError(msg);
       }
       return false;
-    } finally {
-      setIsConnecting(false);
-    }
+    } finally { setIsConnecting(false); }
   }, []);
 
-  // ── Manual address (view-only) connect ────────────────────────────────────
+  // ── xBull connect ─────────────────────────────────────────────────────────
+  const connectXBull = useCallback(async () => {
+    setIsConnecting(true); setError(null);
+    try {
+      const found = await waitFor(hasXBull, 5000);
+      if (!found) {
+        setError("xBull Wallet not found. Install the xBull extension first.");
+        return false;
+      }
+      setXBullInstalled(true);
+
+      const res  = await window.xBullSDK.connect({
+        canRequestPublicKey: true,
+        canRequestSign: true,
+      });
+      const addr = res?.publicKey || res;
+
+      if (!addr || !isValidStellarAddress(addr)) {
+        setError("Could not get xBull address. Please try again.");
+        return false;
+      }
+
+      localStorage.setItem(WALLET_TYPE, "xbull");
+      localStorage.removeItem(MANUAL_KEY);
+      setAccount(addr); setNetwork("TESTNET");
+      setWalletType("xbull"); setIsViewOnly(false);
+      return true;
+    } catch (err) {
+      Sentry.captureException(err);
+      const msg = err?.message || String(err) || "xBull connection failed";
+      setError(msg.includes("User rejected") ? "Connection rejected — approve in xBull." : msg);
+      return false;
+    } finally { setIsConnecting(false); }
+  }, []);
+
+  // ── Manual address (view-only) ─────────────────────────────────────────────
   const connectManual = useCallback((address) => {
     const addr = address?.trim();
     if (!isValidStellarAddress(addr)) {
@@ -167,32 +222,45 @@ export function useFreighter() {
       return false;
     }
     localStorage.setItem(MANUAL_KEY, addr);
-    setAccount(addr);
-    setNetwork("TESTNET");
-    setIsViewOnly(true);
-    setError(null);
+    localStorage.setItem(WALLET_TYPE, "manual");
+    setAccount(addr); setNetwork("TESTNET");
+    setWalletType("manual"); setIsViewOnly(true); setError(null);
     return true;
   }, []);
 
   // ── Disconnect ─────────────────────────────────────────────────────────────
   const disconnect = useCallback(() => {
     localStorage.removeItem(MANUAL_KEY);
-    setAccount(null);
-    setNetwork(null);
-    setIsViewOnly(false);
-    setError(null);
+    localStorage.removeItem(WALLET_TYPE);
+    setAccount(null); setNetwork(null);
+    setWalletType(null); setIsViewOnly(false); setError(null);
   }, []);
 
-  // ── Sign transaction (blocked in view-only mode) ───────────────────────────
+  // ── Sign transaction ───────────────────────────────────────────────────────
   const signTx = useCallback(async (xdr, networkPassphrase) => {
     if (!account) throw new Error("Wallet not connected");
-    if (isViewOnly) throw new Error("VIEW_ONLY: Open this app in Freighter to sign transactions.");
+    if (isViewOnly) throw new Error("VIEW_ONLY: Open this app in Freighter or xBull to sign transactions.");
 
     const passphrase =
       networkPassphrase ||
       STELLAR_NETWORKS[network]?.passphrase ||
       STELLAR_NETWORKS.TESTNET.passphrase;
 
+    // xBull signing
+    if (walletType === "xbull") {
+      try {
+        const res = await window.xBullSDK.signXDR(xdr, {
+          network: network === "PUBLIC" ? "PUBLIC" : "TESTNET",
+        });
+        const signed = res?.signedXDR || res?.xdr || res;
+        if (!signed || typeof signed !== "string") throw new Error("xBull returned empty signature");
+        return signed;
+      } catch (err) {
+        throw new Error(err?.message || "xBull signing failed");
+      }
+    }
+
+    // Freighter signing
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const result = await signTransaction(xdr, { networkPassphrase: passphrase, address: account });
@@ -212,18 +280,21 @@ export function useFreighter() {
         throw err;
       }
     }
-  }, [account, network, isViewOnly]);
+  }, [account, network, walletType, isViewOnly]);
 
   return {
     account,
     network,
+    walletType,
     networkInfo: STELLAR_NETWORKS[network] || { name: network || "Unknown", passphrase: "" },
     isFreighterInstalled,
+    isXBullInstalled,
     isConnecting,
     isViewOnly,
     error,
     isConnected: !!account,
     connect,
+    connectXBull,
     connectManual,
     disconnect,
     signTx,
