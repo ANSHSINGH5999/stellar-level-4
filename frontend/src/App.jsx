@@ -122,17 +122,21 @@ export default function App() {
               <p className="text-gray-400 text-sm">
                 Stake <span className="text-white font-semibold">STLR tokens</span> and earn{" "}
                 <span className="text-green-400 font-semibold">{(APY_RATE * 100).toFixed(0)}% APY</span> in on-chain rewards.
-                Connect Freighter to get started.
+                Connect Freighter or paste your address to get started.
               </p>
             </div>
-            <button
-              onClick={freighter.connect}
-              disabled={freighter.isConnecting}
-              className="btn-primary flex-shrink-0 flex items-center gap-2"
-            >
-              <Wallet size={15} />
-              Connect Wallet
-            </button>
+            <WalletConnect
+              account={account}
+              network={freighter.network}
+              networkInfo={freighter.networkInfo}
+              isConnecting={freighter.isConnecting}
+              isFreighterInstalled={freighter.isFreighterInstalled}
+              isViewOnly={freighter.isViewOnly}
+              error={freighter.error}
+              onConnect={freighter.connect}
+              onConnectManual={freighter.connectManual}
+              onDisconnect={freighter.disconnect}
+            />
           </div>
         )}
 
