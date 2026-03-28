@@ -124,6 +124,16 @@ export function useStellarData(account) {
     return () => clearInterval(id);
   }, [fetchData, account]);
 
+  /* ── Refresh immediately when tab comes back to foreground ───────────── */
+  useEffect(() => {
+    if (!account) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchData();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [account, fetchData]);
+
   /* ── Live reward ticker (updates every second) ───────────────────────── */
   useEffect(() => {
     if (!stakedAt || parseFloat(stakedAmount) <= 0) {

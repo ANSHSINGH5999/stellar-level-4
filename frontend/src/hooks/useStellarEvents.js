@@ -17,8 +17,10 @@ const MAX_EVENTS = 80;
  * Auto-reconnect: each stream retries with exponential backoff on error/close.
  */
 export function useStellarEvents(account) {
-  const [events, setEvents]       = useState([]);
+  const [events, setEvents]         = useState([]);
   const [isListening, setListening] = useState(false);
+  // Incrementing this forces all streams to tear down and restart
+  const [streamKey, setStreamKey]   = useState(0);
 
   // Seen-set prevents the same tx+type from appearing twice across streams
   const seenRef    = useRef(new Set());
@@ -162,6 +164,20 @@ export function useStellarEvents(account) {
     } catch { /* non-critical */ }
   }, [account, addEvent]);
 
+  /* ── Restart streams when tab comes back to foreground ──────────────────── */
+  // On mobile, SSE streams die silently when the page is backgrounded.
+  // visibilitychange forces a full reconnect so data stays fresh.
+  useEffect(() => {
+    if (!account) return;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        setStreamKey((k) => k + 1);
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [account]);
+
   /* ── subscribe to live streams ───────────────────────────────────────────── */
   useEffect(() => {
     if (!account) {
@@ -279,7 +295,8 @@ export function useStellarEvents(account) {
       streamsRef.current = [];
       setListening(false);
     };
-  }, [account, addEvent, loadHistory, openStream]);
+  // streamKey triggers a full reconnect when the tab comes back to foreground
+  }, [account, addEvent, loadHistory, openStream, streamKey]);
 
   return { events, isListening, clearEvents };
 }
