@@ -35,7 +35,9 @@ export function getSTLRAsset() {
 /** True when the app is connected to real testnet accounts (always true with defaults). */
 export const IS_CONFIGURED = true;
 
-export const STLR_ASSET = new StellarSdk.Asset("STLR", STLR_ISSUER);
+export const STLR_ASSET = (() => {
+  try { return new StellarSdk.Asset("STLR", STLR_ISSUER); } catch { return null; }
+})();
 
 // ── Constants ──────────────────────────────────────────────────────────────
 export const APY_RATE          = 0.12;           // 12% per year
