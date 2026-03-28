@@ -1,0 +1,147 @@
+name: Deploy — Testnet & Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      network:
+        description: "Target network"
+        required: true
+        default: "sepolia"
+        type: choice
+        options: [sepolia, mainnet]
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false  # Never cancel an in-progress deploy
+
+jobs:
+  # ── Deploy to Sepolia Testnet ─────────────────────────────────────────────
+  deploy-testnet:
+    name: Deploy to Sepolia Testnet
+    runs-on: ubuntu-latest
+    environment: testnet
+    if: github.event_name == 'push' || github.event.inputs.network == 'sepolia'
+    outputs:
+      token-address: ${{ steps.deploy.outputs.token-address }}
+      staking-address: ${{ steps.deploy.outputs.staking-address }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile contracts
+        run: npm run compile
+
+      - name: Run tests before deploy
+        run: npm test
+
+      - name: Deploy to Sepolia
+        id: deploy
+        run: |
+          npm run deploy:sepolia 2>&1 | tee deploy-output.txt
+          # Extract addresses from output
+          TOKEN=$(grep "StellarToken:" deploy-output.txt | tail -1 | awk '{print $2}')
+          STAKING=$(grep "StellarStaking:" deploy-output.txt | tail -1 | awk '{print $2}')
+          echo "token-address=$TOKEN" >> $GITHUB_OUTPUT
+          echo "staking-address=$STAKING" >> $GITHUB_OUTPUT
+        env:
+          PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+
+      - name: Save deployment info
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-sepolia
+          path: deployments/sepolia.json
+          retention-days: 30
+
+      - name: Verify contracts on Etherscan
+        run: |
+          npx hardhat verify --network sepolia ${{ steps.deploy.outputs.token-address }} "${{ secrets.DEPLOYER_ADDRESS }}" || true
+          npx hardhat verify --network sepolia ${{ steps.deploy.outputs.staking-address }} "${{ steps.deploy.outputs.token-address }}" "${{ secrets.DEPLOYER_ADDRESS }}" || true
+        env:
+          PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+
+  # ── Deploy Frontend to Vercel ─────────────────────────────────────────────
+  deploy-frontend:
+    name: Deploy Frontend to Vercel
+    runs-on: ubuntu-latest
+    needs: deploy-testnet
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_TOKEN_ADDRESS: ${{ needs.deploy-testnet.outputs.token-address }}
+          VITE_STAKING_ADDRESS: ${{ needs.deploy-testnet.outputs.staking-address }}
+          VITE_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          working-directory: frontend
+          vercel-args: "--prod"
+
+  # ── Deploy to Mainnet (manual only) ──────────────────────────────────────
+  deploy-mainnet:
+    name: Deploy to Mainnet
+    runs-on: ubuntu-latest
+    environment: mainnet  # Requires manual approval in GitHub
+    if: github.event.inputs.network == 'mainnet'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile & test
+        run: npm run compile && npm test
+
+      - name: Deploy to Mainnet
+        run: npm run deploy:mainnet
+        env:
+          PRIVATE_KEY: ${{ secrets.DEPLOYER_PRIVATE_KEY }}
+          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+          ETHERSCAN_API_KEY: ${{ secrets.ETHERSCAN_API_KEY }}
+
+      - name: Save deployment info
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-mainnet
+          path: deployments/mainnet.json
+          retention-days: 90
