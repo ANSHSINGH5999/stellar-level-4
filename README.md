@@ -5,16 +5,16 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Stellar Network](https://img.shields.io/badge/Network-Stellar%20Testnet-blueviolet)](https://stellar.org)
 [![Freighter Wallet](https://img.shields.io/badge/Wallet-Freighter-6366f1)](https://freighter.app)
-[![Live Demo](https://img.shields.io/badge/🚀%20Live-Demo-brightgreen)](https://stellar-level-4.vercel.app)
-[![Demo Video](https://img.shields.io/badge/🎥%20Demo-Video-red)](https://drive.google.com/drive/folders/1RiwaWm59ajCNQhrNBdu_BnWE4CEQ-1Ck)
+[![Live Demo](https://img.shields.io/badge/%20Live-Demo-brightgreen)](https://stellar-level-4.vercel.app)
+[![Demo Video](https://img.shields.io/badge/%20Demo-Video-red)](https://drive.google.com/drive/folders/1RiwaWm59ajCNQhrNBdu_BnWE4CEQ-1Ck)
 
 ---
 
 > **A production-ready DeFi staking platform built entirely on the Stellar Network.**
 > Stake STLR tokens, earn 12% APY in on-chain rewards, and watch real-time blockchain events — all without EVM, Solidity, or MetaMask.
 
-**🚀 Live Demo:** [https://stellar-level-4.vercel.app](https://stellar-level-4.vercel.app)
-**🎥 Demo Video:** [Watch on Google Drive](https://drive.google.com/drive/folders/1RiwaWm59ajCNQhrNBdu_BnWE4CEQ-1Ck)
+** Live Demo:** [https://stellar-level-4.vercel.app](https://stellar-level-4.vercel.app)
+** Demo Video:** [Watch on Google Drive](https://drive.google.com/drive/folders/1RiwaWm59ajCNQhrNBdu_BnWE4CEQ-1Ck)
 
 ---
 
@@ -93,19 +93,19 @@ This project proves that a full DeFi staking experience is possible on Stellar u
 
 | Requirement | Status | Implementation |
 |-------------|--------|---------------|
-| Stellar Network (no EVM) | ✅ | 100% Stellar Testnet — zero Solidity |
-| Custom Token | ✅ | STLR asset issued on testnet |
-| Inter-contract calls | ✅ | Multi-op atomic transactions (Payment + ManageData) |
-| Real-time events | ✅ | 3 parallel Horizon SSE streams |
-| CI/CD pipeline | ✅ | GitHub Actions → Vercel auto-deploy |
-| Mobile responsive | ✅ | Tailwind mobile-first, 375px–1440px |
-| 8+ meaningful commits | ✅ | 21 commits, full development lifecycle |
-| Live deployment | ✅ | [stellar-level-4.vercel.app](https://stellar-level-4.vercel.app) |
-| Wallet integration | ✅ | Freighter v6 with retry on extension race |
-| Fully working | ✅ | Real stakes, real rewards, real on-chain state |
-| Clean secure code | ✅ | Atomic txs, ManageData guards, typed errors |
-| Real user onboarding | ✅ | 5-step flow: connect → trustline → faucet → stake → earn |
-| Production-like | ✅ | Sentry, pre-loader, error boundaries, poll + SSE |
+| Stellar Network (no EVM) | DONE | 100% Stellar Testnet — zero Solidity |
+| Custom Token | DONE | STLR asset issued on testnet |
+| Inter-contract calls | DONE | Multi-op atomic transactions (Payment + ManageData) |
+| Real-time events | DONE | 3 parallel Horizon SSE streams |
+| CI/CD pipeline | DONE | GitHub Actions → Vercel auto-deploy |
+| Mobile responsive | DONE | Tailwind mobile-first, 375px–1440px |
+| 8+ meaningful commits | DONE | 21 commits, full development lifecycle |
+| Live deployment | DONE | [stellar-level-4.vercel.app](https://stellar-level-4.vercel.app) |
+| Wallet integration | DONE | Freighter v6 with retry on extension race |
+| Fully working | DONE | Real stakes, real rewards, real on-chain state |
+| Clean secure code | DONE | Atomic txs, ManageData guards, typed errors |
+| Real user onboarding | DONE | 5-step flow: connect → trustline → faucet → stake → earn |
+| Production-like | DONE | Sentry, pre-loader, error boundaries, poll + SSE |
 
 ---
 
